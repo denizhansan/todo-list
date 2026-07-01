@@ -1,10 +1,5 @@
 FROM python:3.12-alpine
 
-ENV MONGO_DB_USERNAME=admin \
-    MONGO_DB_PWD=password 
-    
-    ##mongodb_uri=mongodb://admin:password@localhost:27017
-
 WORKDIR /home/app
 
 COPY requirements.txt .
