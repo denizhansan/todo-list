@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    image: todo-app/backend:$BUILD_NUMBER
+    image: todo-app/backend
     container_name: todo-backend-container
     ports:
       - "8000:8000"
@@ -18,7 +18,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    image: todo-app/frontend:$BUILD_NUMBER
+    image: todo-app/frontend
     container_name: todo-frontend-container
     ports:
       - "5500:5500"
@@ -74,7 +74,7 @@ services:
 volumes:
   mongo-data:
   jenkins-data:
-  
+
 networks:
   mongo-network:
     driver: bridge
