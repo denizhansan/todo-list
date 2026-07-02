@@ -41,7 +41,7 @@ services:
         - /var/run/docker.sock:/var/run/docker.sock
       networks:
         - mongo-network
-        
+
   mongodb:
     image: mongo
     container_name: todo-mongo
@@ -73,7 +73,8 @@ services:
 
 volumes:
   mongo-data:
-
+  jenkins-data:
+  
 networks:
   mongo-network:
     driver: bridge
