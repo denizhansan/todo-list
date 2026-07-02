@@ -52,8 +52,8 @@ pipeline {
                     exit 1
                 fi
                 '''
-                # Burdaki testte updated time a göre bakıyorum daha güvenilir olması için sonrasında
-                # -d ile değişen title a göre bakabilirim.
+                // Burdaki testte updated time a göre bakıyorum daha güvenilir olması için sonrasında
+                // -d ile değişen title a göre bakabilirim.
                 echo "Updating the task"
                 sh '''
                 old_time=$(echo "$task" | jq -r '.updated_at')
