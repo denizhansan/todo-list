@@ -1,8 +1,9 @@
 pipeline {
-    agent {
+    /* agent {
         node {
             label 'todo-Jenkins-agent'
-        }
+        } */
+        agent any
     }
     environment {
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
