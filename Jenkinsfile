@@ -19,7 +19,7 @@ pipeline {
                 echo 'Building docker images..'
                 sh '''
                 docker compose build
-
+                '''
             }
         }
         stage('Test') {
