@@ -8,7 +8,7 @@ RUN apt-get update && \
         curl \
         docker.io \
         docker-compose-v2 && \
-    apt-get clean && \
+    apt-get clean \
     rm -rf /var/lib/apt/lists/*
 
 USER jenkins
