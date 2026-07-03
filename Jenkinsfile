@@ -1,7 +1,7 @@
 pipeline {
      agent {
         node {
-            label 'todo-Jenkins-agent'
+            label 'todo-jenkins-agent-deneme'
         } 
     }
     environment {
