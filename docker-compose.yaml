@@ -27,21 +27,21 @@ services:
     networks:
       - mongo-network
 
-  jenkins:
-      build:
-        context: ./jenkins
-        dockerfile: Dockerfile
-      image: todo-app/jenkins
-      container_name: todo-jenkins-container
-      restart: unless-stopped
-      ports:
-        - "8080:8080"
-        - "50000:50000"
-      volumes:
-        - jenkins-data:/var/jenkins_home
-        - /var/run/docker.sock:/var/run/docker.sock
-      networks:
-        - mongo-network
+  jenkins-controller:
+    build:
+      context: ./jenkins-controller
+      dockerfile: Dockerfile
+    image: todo-app/jenkins-controller
+    container_name: todo-jenkins-controller
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins-data:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - mongo-network
+    restart: unless-stopped
 
   mongodb:
     image: mongo
