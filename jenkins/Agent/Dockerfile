@@ -6,9 +6,10 @@ RUN apt-get update && \
     apt-get install -y \
         git \
         curl \
+        ca-certificates \
         docker.io \
-        docker-compose-v2 && \
-    apt-get clean \
+        docker-compose-plugin && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 USER jenkins
