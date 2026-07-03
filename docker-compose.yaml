@@ -29,7 +29,7 @@ services:
 
   jenkins-controller:
     build:
-      context: ./jenkins-controller
+      context: ./jenkins/Controller
       dockerfile: Dockerfile
     image: todo-app/jenkins-controller
     container_name: todo-jenkins-controller
