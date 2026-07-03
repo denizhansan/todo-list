@@ -7,8 +7,8 @@ RUN apt-get update && \
         git \
         curl \
         ca-certificates \
-        docker-compose-v2 && \
-        docker.io && \
+        docker.io \
+        docker-compose-plugin && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
