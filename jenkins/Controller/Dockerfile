@@ -26,13 +26,13 @@ RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc \
 
 USER jenkins
 
-# CI/CD pipeline'ın için gerekli pluginler
+# CI/CD pipeline'ın için gerekli pluginler (versiyon pinlemeden, en güncel uyumlu sürüm otomatik çekilir)
 RUN jenkins-plugin-cli --plugins \
-        "blueocean:1.27.0 \
-         docker-workflow:1.29 \
-         git:5.2.1 \
-         pipeline-stage-view:2.34 \
-         workflow-aggregator:600.v2263cd44a350 \
-         credentials-binding:642.v737c34e6b311 \
-         kubernetes:4172.v20240719_3ec32 \
-         prometheus:2.2.3"
+    blueocean \
+    docker-workflow \
+    git \
+    pipeline-stage-view \
+    workflow-aggregator \
+    credentials-binding \
+    kubernetes \
+    prometheus
