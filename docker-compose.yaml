@@ -43,6 +43,18 @@ services:
       - mongo-network
     restart: unless-stopped
 
+  alpine-socat:
+    image: alpine/socat
+    container_name: todo-alpine-socat
+    command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+    ports:
+      - "127.0.0.1:2376:2375"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: always
+    networks:
+      - mongo-network
+
   mongodb:
     image: mongo
     container_name: todo-mongo
