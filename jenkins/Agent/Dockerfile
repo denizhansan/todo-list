@@ -15,7 +15,10 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-RUN apk add --no-cache jq curl git
+RUN apt-get update && \
+    apt-get install -y jq git && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 ARG DOCKER_GID=999
 RUN groupadd -g ${DOCKER_GID} docker || groupmod -g ${DOCKER_GID} docker && \
