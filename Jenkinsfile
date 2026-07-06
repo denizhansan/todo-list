@@ -128,4 +128,3 @@ pipeline {
         }
     }
 }
-//merge deneme
