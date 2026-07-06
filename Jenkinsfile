@@ -123,10 +123,9 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo 'Deploying...'
-                sh '''
-                docker compose -f jenkins-docker.compose.yaml build
-                '''
+                echo 'İlerki aşamalarda deploy işlemleri yapılacak.'
             }
         }
     }
 }
+//a
