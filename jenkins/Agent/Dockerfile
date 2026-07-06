@@ -15,6 +15,8 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+RUN apk add --no-cache jq curl git
+
 ARG DOCKER_GID=999
 RUN groupadd -g ${DOCKER_GID} docker || groupmod -g ${DOCKER_GID} docker && \
     usermod -aG docker jenkins
