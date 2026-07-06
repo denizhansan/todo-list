@@ -12,7 +12,7 @@ pipeline {
         stage('Check Branch') {
             steps {
                 script {
-                    if (env.GIT_BRANCH != 'origin/main') {
+                    if (env.GIT_BRANCH != 'origin/devops-jenkins-agent') {
                         currentBuild.result = 'ABORTED'
                         error("Sadece main branch build edilir. Gelen branch: ${env.GIT_BRANCH}")
                     }
