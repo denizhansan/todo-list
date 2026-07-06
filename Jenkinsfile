@@ -1,8 +1,8 @@
 pipeline {
-     agent {
+    agent {
         node {
             label 'todo-jenkins-agent'
-        } 
+        }
     }
     environment {
         BUILD_NUMBER = "${env.BUILD_NUMBER}"
@@ -31,94 +31,78 @@ pipeline {
 
                 echo 'Building docker images..'
                 sh '''
-                docker compose build
-                docker compose up -d
+                docker compose -f jenkins-docker.compose.yaml build
+                docker compose -f jenkins-docker.compose.yaml up -d
                 '''
             }
         }
         stage('Test') {
             steps {
                 echo 'Testing..'
+                sh '''
+                set -e
+
                 echo "Running health check"
-                sh '''
                 sleep 10
-                
-                curl --fail http://localhost:8000/health
-                '''
+                curl --fail http://todo-backend-container:8000/health
+
                 echo "Creating test task"
-                sh '''
-                response=$(curl --fail -X POST http://localhost:8000/tasks \
-                -H "Content-Type: application/json" \
-                -d '{"title": "Test Task", "description": "This is a test task."}')
-                
+                response=$(curl --fail -X POST http://todo-backend-container:8000/tasks \
+                    -H "Content-Type: application/json" \
+                    -d '{"title": "Test Task", "description": "This is a test task."}')
                 task_id=$(echo "$response" | jq -r '._id')
-                '''
-                echo "Task created with ID. $task_id"
+                echo "Task created with ID: $task_id"
 
                 echo "Checking if the task was created"
-                sh '''
-                task=$(curl --fail http://localhost:8000/tasks/$task_id)
-                '''
+                task=$(curl --fail http://todo-backend-container:8000/tasks/$task_id)
                 echo "Task details: $task"
-                sh '''
+
                 title=$(echo "$task" | jq -r '.title')
-                
                 if [ "$title" != "Test Task" ]; then
                     echo "Wrong title. Expected 'Test Task', got '$title'"
                     exit 1
                 fi
-                '''
-                // Burdaki testte updated time a göre bakıyorum daha güvenilir olması için sonrasında
-                // -d ile değişen title a göre bakabilirim.
+
+                # Burdaki testte updated_at a göre bakıyorum daha güvenilir olması için
+                # sonrasında -d ile değişen title a göre de bakabilirim.
                 echo "Updating the task"
-                sh '''
                 old_time=$(echo "$task" | jq -r '.updated_at')
-                '''
                 echo "Old updated_at: $old_time"
-                sh '''
-                updated_task=$(curl --fail -X  PUT http://localhost:8000/tasks/$task_id \
-                -H "Content-Type: application/json" \
-                -d '{"title": "Test Task - Edited", "description": "This is a test task for editing."}')
+
+                updated_task=$(curl --fail -X PUT http://todo-backend-container:8000/tasks/$task_id \
+                    -H "Content-Type: application/json" \
+                    -d '{"title": "Test Task - Edited", "description": "This is a test task for editing."}')
                 updated_time=$(echo "$updated_task" | jq -r '.updated_at')
-                '''
                 echo "New updated_at: $updated_time"
-                sh '''
+
                 if [ "$old_time" == "$updated_time" ]; then
                     echo "Task was not updated"
                     exit 1
                 fi
-                '''
+
                 echo "Checking if the task completed"
-                sh'''
-                check=$(curl --fail -X PATCH http://localhost:8000/tasks/$task_id/complete)
+                check=$(curl --fail -X PATCH http://todo-backend-container:8000/tasks/$task_id/complete)
                 completed=$(echo "$check" | jq -r '.completed')
-                
                 if [ "$completed" != "true" ]; then
                     echo "Task was not completed"
                     exit 1
                 fi
-                '''
-                echo "Checking if the task uncompleted"
-                sh '''
-                check=$(curl --fail -X PATCH http://localhost:8000/tasks/$task_id/uncomplete)
-                uncompleted=$(echo "$check" | jq -r '.completed')
 
+                echo "Checking if the task uncompleted"
+                check=$(curl --fail -X PATCH http://todo-backend-container:8000/tasks/$task_id/uncomplete)
+                uncompleted=$(echo "$check" | jq -r '.completed')
                 if [ "$uncompleted" != "false" ]; then
                     echo "Task was not uncompleted"
                     exit 1
                 fi
-                '''
+
                 echo "Deleting task"
-                sh '''
-                curl --fail -X DELETE http://localhost:8000/tasks/$task_id
-                '''
+                curl --fail -X DELETE http://todo-backend-container:8000/tasks/$task_id
+
                 echo "Checking if task was deleted"
-                sh '''
                 status_code=$(curl -o /dev/null -s -w "%{http_code}" \
-                http://localhost:8000/tasks/$task_id)
-                '''
+                    http://todo-backend-container:8000/tasks/$task_id)
                 echo "Status Code: $status_code"
-                sh '''
                 if [ "$status_code" != "404" ]; then
                     echo "Task was not deleted"
                     exit 1
@@ -130,7 +114,7 @@ pipeline {
             steps {
                 echo 'Deploying...'
                 sh '''
-                docker compose build
+                docker compose -f jenkins-docker.compose.yaml build
                 '''
             }
         }
