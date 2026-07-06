@@ -9,6 +9,21 @@ pipeline {
     }
 
     stages {
+        stage('Create .env') {
+            steps {
+                echo 'Creating .env file..'
+                sh '''
+                cat > .env <<EOF
+                MONGODB_URI=mongodb://admin:password@todo-mongo:27017/?authSource=admin
+                DATABASE_NAME=todo_app
+                COLLECTION_NAME=tasks
+                API_HOST=0.0.0.0
+                API_PORT=8000
+                ALLOWED_ORIGINS=http://localhost
+                EOF
+                '''
+            }
+        }
         stage('Build') {
             steps {
                 echo 'Cloning source project..'
@@ -17,6 +32,7 @@ pipeline {
                 echo 'Building docker images..'
                 sh '''
                 docker compose build
+                docker compose up -d
                 '''
             }
         }

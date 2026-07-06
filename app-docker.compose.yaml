@@ -1,0 +1,64 @@
+  services:
+    backend:
+      build:
+        context: ./backend
+        dockerfile: Dockerfile
+      image: todo-app/backend
+      container_name: todo-backend-container
+      ports:
+        - "8000:8000"
+      env_file:
+        - .env
+      depends_on:
+        - mongodb
+      networks:
+        - mongo-network
+
+    frontend:
+      build:
+        context: ./frontend
+        dockerfile: Dockerfile
+      image: todo-app/frontend
+      container_name: todo-frontend-container
+      ports:
+        - "5500:5500"
+      depends_on:
+        - backend
+      networks:
+        - mongo-network
+
+    mongodb:
+      image: mongo
+      container_name: todo-mongo
+      restart: always
+      ports:
+        - "27017:27017"
+      volumes:
+        - mongo-data:/data/db
+      environment:
+        MONGO_INITDB_ROOT_USERNAME: admin
+        MONGO_INITDB_ROOT_PASSWORD: password
+      networks:
+        - mongo-network
+
+    mongo-express:
+      image: mongo-express
+      container_name: todo-mongo-express
+      restart: always
+      ports:
+        - "8081:8081"
+      environment:
+        ME_CONFIG_MONGODB_SERVER: mongodb
+        ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+        ME_CONFIG_MONGODB_ADMINPASSWORD: password
+      depends_on:
+        - mongodb
+      networks:
+        - mongo-network
+
+  volumes:
+    mongo-data:
+
+  networks:
+    mongo-network:
+      driver: bridge

@@ -1,0 +1,36 @@
+    services:
+      jenkins-controller:
+        build:
+          context: ./jenkins/Controller
+          dockerfile: Dockerfile
+        image: todo-app/jenkins-controller
+        container_name: todo-jenkins-controller
+        ports:
+          - "8080:8080"
+          - "50000:50000"
+        volumes:
+          - jenkins-data:/var/jenkins_home
+          - /var/run/docker.sock:/var/run/docker.sock
+        networks:
+          - mongo-network
+        restart: unless-stopped
+
+      alpine-socat:
+        image: alpine/socat
+        container_name: todo-alpine-socat
+        command: tcp-listen:2375,fork,reuseaddr unix-connect:/var/run/docker.sock
+        ports:
+          - "127.0.0.1:2376:2375"
+        volumes:
+          - /var/run/docker.sock:/var/run/docker.sock
+        restart: always
+        networks:
+          - mongo-network
+
+    volumes:
+      mongo-data:
+      jenkins-data:
+
+    networks:
+      mongo-network:
+        driver: bridge
