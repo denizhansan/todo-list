@@ -120,5 +120,3 @@ pipeline {
         }
     }
 }
-
-//deneme commitit
