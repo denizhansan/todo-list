@@ -9,6 +9,16 @@ pipeline {
     }
 
     stages {
+        stage('Check Branch') {
+            steps {
+                script {
+                    if (env.GIT_BRANCH != 'origin/main') {
+                        currentBuild.result = 'ABORTED'
+                        error("Sadece main branch build edilir. Gelen branch: ${env.GIT_BRANCH}")
+                    }
+                }
+            }
+        }
         stage('Create .env') {
             steps {
                 echo 'Creating .env file..'
