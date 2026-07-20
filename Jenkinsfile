@@ -120,13 +120,16 @@ pipeline {
                 '''
             }
         }
-          }
         stage('SonarQube Analysis') {
-            def mvn = tool 'Default Maven';
-             withSonarQubeEnv() {
-                sh "${mvn}/bin/mvn clean verify sonar:sonar -Dsonar.projectKey=Todo-App"
-    }
-  }
+            steps {
+                script {
+                    def scannerHome = tool 'Sonarqube_todo'
+                    withSonarQubeEnv('SonarQube') {
+                        sh "${scannerHome}/bin/sonar-scanner"
+                    }
+                }
+            }
+        }
         stage('Deploy') {
             steps {
                 echo 'Deploying...'
@@ -135,3 +138,4 @@ pipeline {
         }
     }
 }
+//merge deneme
