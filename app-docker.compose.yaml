@@ -55,9 +55,40 @@
         - mongodb
       networks:
         - todo-network
+    
+    sonarqube:
+      image: sonarqube:lts-community
+      container_name: todo-sonarqube
+      restart: always
+      ports:
+        - "9000:9000"
+      environment:
+        SONARQUBE_JDBC_URL: jdbc:postgresql://postgres:5432/sonar
+        SONARQUBE_JDBC_USERNAME: sonar
+        SONARQUBE_JDBC_PASSWORD: sonar
+      depends_on:
+        - postgres
+      networks:
+        - todo-network
+
+    postgres:
+      image: postgres:17
+      container_name: todo-postgres
+      restart: always
+      ports:
+        - "5432:5432"
+      volumes:
+        - postgres-data:/var/lib/postgresql/data
+      environment:
+        POSTGRES_USER: sonar
+        POSTGRES_PASSWORD: sonar
+        POSTGRES_DB: sonar
+      networks:
+        - todo-network
 
   volumes:
     mongo-data:
+    postgres-data:
 
   networks:
     todo-network:
