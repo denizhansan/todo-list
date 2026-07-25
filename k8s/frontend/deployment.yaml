@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: denizhansan/todo-frontend:v2
+          image: denizhansan/todo-frontend:v3
 
           ports:
             - containerPort: 5500

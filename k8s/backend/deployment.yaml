@@ -26,8 +26,8 @@ spec:
             - containerPort: 8000
 
           env:
-            - name: MONGO_URI
+            - name: MONGODB_URI
               valueFrom:
                 secretKeyRef:
                   name: todo-app-secret
-                  key: MONGO_DB_URI
+                  key: MONGODB_URI

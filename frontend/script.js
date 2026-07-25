@@ -7,7 +7,7 @@
 // Base URL of the backend API. Change this if the backend runs on a
 // different host/port (e.g., when later deployed behind Docker/K8s,
 // this can be swapped for a relative path or an injected config value).
-const API_BASE_URL = "http://localhost:8000";
+const API_BASE_URL = "/api";
 
 // ---------------------------------------------------------------------
 // State

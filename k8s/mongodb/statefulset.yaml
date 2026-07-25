@@ -22,7 +22,7 @@ spec:
     spec:
       containers:
         - name: mongodb
-          image: mongo:latest
+          image: mongo
 
           ports:
             - containerPort: 27017
@@ -43,16 +43,18 @@ spec:
           volumeMounts:
             - name: mongodb-storage
               mountPath: /data/db
-
-  volumeClaimTemplates:
-    - metadata:
-        name: mongodb-storage
+      volumes:
+        - name: mongodb-storage
+          emptyDir: {}
+  # volumeClaimTemplates:
+  #   - metadata:
+  #       name: mongodb-storage
         
-      spec:
-        storageClassName: local-path
+  #     spec:
+  #       storageClassName: local-path
           
-        accessModes:
-          - ReadWriteOnce
-        resources:
-          requests:
-            storage: 2Gi
+  #       accessModes:
+  #         - ReadWriteOnce
+  #       resources:
+  #         requests:
+  #           storage: 2Gi

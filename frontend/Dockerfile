@@ -1,11 +1,15 @@
-FROM python:3.12-alpine
+FROM nginx:alpine
 
-WORKDIR /home/app
+WORKDIR /usr/share/nginx/html
 
-COPY . /home/app
-    ## . /home/app ile aynı anlama geliyor
+# Statik frontend dosyalarını (index.html, script.js, style.css vs.) kopyala
+COPY . /usr/share/nginx/html
+
+# Nginx'in kendi config'ini, bizim reverse-proxy ayarımız olan nginx.conf ile değiştir
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 5500
-##container build ettikten sonra run ederken -p 5500:5500 ile portu eşleştirmemiz gerekiyor.
+## container build ettikten sonra run ederken -p 5500:5500 ile portu eşleştirmemiz gerekiyor.
 
-CMD ["python", "-m", "http.server", "5500"]
+# nginx image'i zaten kendi CMD'siyle (nginx -g 'daemon off;') foreground'da çalışıyor,
+# ayrıca bir CMD belirtmemize gerek yok.
