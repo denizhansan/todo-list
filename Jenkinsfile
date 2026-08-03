@@ -130,7 +130,16 @@ pipeline {
                 }
             }
         }
-        stage('Deploy') {
+        stage('Deploying Docker Images') {
+            steps {
+                echo 'Docker imageları DockerHub a deploy ediliyor.'
+                sh '''
+                docker push denizhansan/todo-backend:V2
+                docker push denizhansan/todo-frontend:V3
+                '''
+            }
+        }
+        stage('Deploying pods to Kubernetes') {
             steps {
                 echo 'Deploying...'
                 echo 'İlerki aşamalarda deploy işlemleri yapılacak.'
@@ -138,4 +147,4 @@ pipeline {
         }
     }
 }
-//merge denemeee
+//merge deneme
