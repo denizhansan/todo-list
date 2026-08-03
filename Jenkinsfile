@@ -132,11 +132,20 @@ pipeline {
         }
         stage('Deploying Docker Images') {
             steps {
-                echo 'Docker imageları DockerHub a deploy ediliyor.'
-                sh '''
-                docker push denizhansan/todo-backend:V2
-                docker push denizhansan/todo-frontend:V3
-                '''
+                echo 'Docker imageları DockerHub\'a deploy ediliyor.'
+        
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USERNAME',
+                    passwordVariable: 'DOCKER_PASSWORD'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+        
+                        docker push denizhansan/todo-backend:v2
+                        docker push denizhansan/todo-frontend:v3
+                    '''
+                }
             }
         }
         stage('Deploying pods to Kubernetes') {
