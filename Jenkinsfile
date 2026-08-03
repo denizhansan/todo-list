@@ -148,7 +148,7 @@ pipeline {
                 }
             }
         }
-        stage('Deploying pods to Kubernetes') {
+        stage('Deploying Kubernetes') {
             steps {
                 echo 'Deploying...'
                 echo 'İlerki aşamalarda deploy işlemleri yapılacak.'
@@ -156,4 +156,4 @@ pipeline {
         }
     }
 }
-//merge deneme
+//merge denemee
