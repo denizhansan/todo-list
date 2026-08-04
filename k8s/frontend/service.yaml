@@ -6,6 +6,8 @@ metadata:
   namespace: todo-app
 
 spec:
+  type: NodePort
+  
   selector:
     app: frontend
 
@@ -13,5 +15,3 @@ spec:
     - port: 5500
       targetPort: 5500
       nodePort: 30550
-
-  type: NodePort
