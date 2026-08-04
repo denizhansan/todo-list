@@ -142,8 +142,8 @@ pipeline {
                     sh '''
                         echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
         
-                        docker push denizhansan/todo-backend:v1
-                        docker push denizhansan/todo-frontend:v1
+                        docker push denizhansan/todo-backend:v2
+                        docker push denizhansan/todo-frontend:v3
                     '''
                 }
             }
