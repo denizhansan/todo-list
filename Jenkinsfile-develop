@@ -39,8 +39,8 @@ pipeline {
             steps {
                 echo 'Building docker images..'
                 sh '''
-                docker compose -f app-docker.compose.yaml build
-                docker compose -f app-docker.compose.yaml up -d
+                docker compose -f -p todo-develop app-docker.compose.yaml build
+                docker compose -f -p todo-develop app-docker.compose.yaml up -d
                 '''
             }
         }
@@ -116,6 +116,11 @@ pipeline {
                     echo "Task was not deleted"
                     exit 1
                 fi
+                '''
+                echo 'Test completed successfully.'
+                echo 'Stopping and removing containers..'
+                sh '''
+                docker compose -f -p todo-develop app-docker.compose.yaml down
                 '''
             }
         }
