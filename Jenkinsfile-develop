@@ -24,7 +24,7 @@ pipeline {
                 echo 'Creating .env file..'
                 sh '''
                 cat > .env <<EOF
-                MONGODB_URI=mongodb://admin:password@todo-mongo:27017/?authSource=admin
+                MONGODB_URI=mongodb://admin:password@mongodb:27017/?authSource=admin
                 DATABASE_NAME=todo_app
                 COLLECTION_NAME=tasks
                 API_HOST=0.0.0.0
