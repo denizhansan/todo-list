@@ -18,7 +18,7 @@ pipeline {
                 echo 'Creating .env file..'
                 sh '''
                 cat > .env <<EOF
-                MONGODB_URI=mongodb://admin:password@todo-mongo:27017/?authSource=admin
+                MONGODB_URI=mongodb://admin:password@mongodb:27017/?authSource=admin
                 DATABASE_NAME=todo_app
                 COLLECTION_NAME=tasks
                 API_HOST=0.0.0.0
@@ -109,6 +109,14 @@ pipeline {
                     exit 1
                 fi
                 '''
+            }
+            post {
+                always {
+                    echo 'Stopping and removing containers..'
+                    sh '''
+                    docker compose -f app-docker.compose.yaml down
+                    '''
+                }
             }
         }
         stage('SonarQube Analysis') {
