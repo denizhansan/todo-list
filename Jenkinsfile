@@ -45,17 +45,17 @@ pipeline {
 
                 echo "Running health check"
                 sleep 10
-                curl --fail http://todo-backend-container:8000/health
+                curl --fail http://backend:8000/health
 
                 echo "Creating test task"
-                response=$(curl --fail -X POST http://todo-backend-container:8000/tasks \
+                response=$(curl --fail -X POST http://backend:8000/tasks \
                     -H "Content-Type: application/json" \
                     -d '{"title": "Test Task", "description": "This is a test task."}')
                 task_id=$(echo "$response" | jq -r '._id')
                 echo "Task created with ID: $task_id"
 
                 echo "Checking if the task was created"
-                task=$(curl --fail http://todo-backend-container:8000/tasks/$task_id)
+                task=$(curl --fail http://backend:8000/tasks/$task_id)
                 echo "Task details: $task"
 
                 title=$(echo "$task" | jq -r '.title')
@@ -70,7 +70,7 @@ pipeline {
                 old_time=$(echo "$task" | jq -r '.updated_at')
                 echo "Old updated_at: $old_time"
 
-                updated_task=$(curl --fail -X PUT http://todo-backend-container:8000/tasks/$task_id \
+                updated_task=$(curl --fail -X PUT http://backend:8000/tasks/$task_id \
                     -H "Content-Type: application/json" \
                     -d '{"title": "Test Task - Edited", "description": "This is a test task for editing."}')
                 updated_time=$(echo "$updated_task" | jq -r '.updated_at')
@@ -82,7 +82,7 @@ pipeline {
                 fi
 
                 echo "Checking if the task completed"
-                check=$(curl --fail -X PATCH http://todo-backend-container:8000/tasks/$task_id/complete)
+                check=$(curl --fail -X PATCH http://backend:8000/tasks/$task_id/complete)
                 completed=$(echo "$check" | jq -r '.completed')
                 if [ "$completed" != "true" ]; then
                     echo "Task was not completed"
@@ -90,7 +90,7 @@ pipeline {
                 fi
 
                 echo "Checking if the task uncompleted"
-                check=$(curl --fail -X PATCH http://todo-backend-container:8000/tasks/$task_id/uncomplete)
+                check=$(curl --fail -X PATCH http://backend:8000/tasks/$task_id/uncomplete)
                 uncompleted=$(echo "$check" | jq -r '.completed')
                 if [ "$uncompleted" != "false" ]; then
                     echo "Task was not uncompleted"
@@ -98,11 +98,11 @@ pipeline {
                 fi
 
                 echo "Deleting task"
-                curl --fail -X DELETE http://todo-backend-container:8000/tasks/$task_id
+                curl --fail -X DELETE http://backend:8000/tasks/$task_id
 
                 echo "Checking if task was deleted"
                 status_code=$(curl -o /dev/null -s -w "%{http_code}" \
-                    http://todo-backend-container:8000/tasks/$task_id)
+                    http://backend:8000/tasks/$task_id)
                 echo "Status Code: $status_code"
                 if [ "$status_code" != "404" ]; then
                     echo "Task was not deleted"
