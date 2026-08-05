@@ -3,7 +3,7 @@
       build:
         context: ./backend
         dockerfile: Dockerfile
-      image: todo-app/backend
+      image: denizhansan/todo-backend:v2
       container_name: todo-backend-container
       ports:
         - "8000:8000"
@@ -18,7 +18,7 @@
       build:
         context: ./frontend
         dockerfile: Dockerfile
-      image: todo-app/frontend
+      image: denizhansan/todo-frontend:v3
       container_name: todo-frontend-container
       ports:
         - "5500:5500"
