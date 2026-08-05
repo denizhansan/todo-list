@@ -4,11 +4,14 @@ pipeline {
             label 'todo-jenkins-agent'
         }
     }
-    environment {
-        BUILD_NUMBER = "${env.BUILD_NUMBER}"
-    }
 
     stages {
+        stage('Checkout') {
+            steps {
+                echo 'Checking out source code..'
+                checkout scm
+            }
+        }
         stage('Check Branch') {
             steps {
                 script {
@@ -36,13 +39,10 @@ pipeline {
         }
         stage('Build') {
             steps {
-                echo 'Cloning source project..'
-                checkout scm
-
                 echo 'Building docker images..'
                 sh '''
-                docker compose -f jenkins-docker.compose.yaml build
-                docker compose -f jenkins-docker.compose.yaml up -d
+                docker compose -f app-docker.compose.yaml build
+                docker compose -f app-docker.compose.yaml up -d
                 '''
             }
         }
@@ -156,4 +156,3 @@ pipeline {
         }
     }
 }
-//merge denemeee
