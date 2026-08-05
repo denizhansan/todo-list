@@ -117,13 +117,13 @@ pipeline {
                     exit 1
                 fi
                 '''
-                post {
-                    always {
-                        echo 'Stopping and removing containers..'
-                        sh '''
-                        docker compose -f app-docker.compose.yaml down
-                        '''
-                    }
+            }
+            post {
+                always {
+                    echo 'Stopping and removing containers..'
+                    sh '''
+                    docker compose -f app-docker.compose.yaml down
+                    '''
                 }
             }
         }
