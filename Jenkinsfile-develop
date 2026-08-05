@@ -39,8 +39,8 @@ pipeline {
             steps {
                 echo 'Building docker images..'
                 sh '''
-                docker compose -f -p todo-develop app-docker.compose.yaml build
-                docker compose -f -p todo-develop app-docker.compose.yaml up -d
+                docker compose -p todo-develop -f app-docker.compose.yaml build
+                docker compose -p todo-develop -f app-docker.compose.yaml up -d
                 '''
             }
         }
@@ -120,7 +120,7 @@ pipeline {
                 echo 'Test completed successfully.'
                 echo 'Stopping and removing containers..'
                 sh '''
-                docker compose -f -p todo-develop app-docker.compose.yaml down
+                docker compose -p todo-develop -f app-docker.compose.yaml down
                 '''
             }
         }
