@@ -12,16 +12,7 @@ pipeline {
                 checkout scm
             }
         }
-        stage('Check Branch') {
-            steps {
-                script {
-                    if (env.GIT_BRANCH != 'origin/main' && env.GIT_BRANCH != 'origin/devops') {
-                        currentBuild.result = 'ABORTED'
-                        error("Hatalı branch. Gelen branch: ${env.GIT_BRANCH}")
-                    }
-                }
-            }
-        }
+
         stage('Create .env') {
             steps {
                 echo 'Creating .env file..'
