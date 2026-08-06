@@ -211,8 +211,8 @@ pipeline {
                     sh '''
                         echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
         
-                        docker build -t denizhansan/todo-backend:$VERSION_STRING -f Dockerfile-backend .
-                        docker build -t denizhansan/todo-frontend:$VERSION_STRING -f Dockerfile-frontend .
+                        docker build -t denizhansan/todo-backend:$VERSION_STRING .
+                        docker build -t denizhansan/todo-frontend:$VERSION_STRING .
 
                         docker push denizhansan/todo-backend:$VERSION_STRING
                         docker push denizhansan/todo-frontend:$VERSION_STRING
