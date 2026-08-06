@@ -178,7 +178,7 @@ pipeline {
                         git config user.name "Jenkins CI"
                         git add version.yaml
                         git commit -m "CI: bump dev version to $VERSION_STRING [skip ci]"
-                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git HEAD:develop
+                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/denizhansan/todo-app.git HEAD:develop
                     '''
                 }
             }
