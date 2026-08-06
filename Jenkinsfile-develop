@@ -189,7 +189,7 @@ pipeline {
                     env.MAJOR = versionFile.version.major.toString()
                     env.MINOR = versionFile.version.minor.toString()
                     env.PATCH = versionFile.version.patch.toString()
-                    env.PRERELEASE = versionFile.version.pre-release
+                    env.PRERELEASE = versionFile.version.'pre-release'
 
                     env.VERSION_STRING =
                         "${env.MAJOR}.${env.MINOR}.${env.PATCH}-${env.PRERELEASE}"
