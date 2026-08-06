@@ -1,0 +1,190 @@
+pipeline {
+    agent {
+        node {
+            label 'todo-jenkins-agent'
+        }
+    }
+
+    parameters {
+        choice(
+            name: 'BUMP_TYPE',
+            choices: ['minor', 'major'],
+            description: 'Release cut sonrası develop hangi cycle a gecsin (patch bu job da hep sifirlanir)'
+        )
+    }
+
+    stages {
+        stage('Checkout develop') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-creds',
+                    usernameVariable: 'GIT_USERNAME',
+                    passwordVariable: 'GIT_TOKEN'
+                )]) {
+                    sh '''
+                        rm -rf repo
+                        git clone https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git repo
+                        cd repo
+                        git checkout develop
+                    '''
+                }
+            }
+        }
+
+        stage('Create Release Branch') {
+            steps {
+                dir('repo') {
+                    script {
+                        def versionFile = readYaml file: 'version.yaml'
+                        env.RELEASE_BRANCH = "release/${versionFile.version.major}.${versionFile.version.minor}"
+                        env.RELEASE_VERSION = "${versionFile.version.major}.${versionFile.version.minor}.0"
+                    }
+                    sh '''
+                        git checkout -b $RELEASE_BRANCH
+                    '''
+                }
+            }
+        }
+
+        stage('Finalize Release Version') {
+            steps {
+                dir('repo') {
+                    script {
+                        def versionFile = readYaml file: 'version.yaml'
+                        versionFile.version.patch = 0
+                        versionFile.version.'pre-release' = ''
+
+                        writeYaml(
+                            file: 'version.yaml',
+                            data: versionFile,
+                            overwrite: true
+                        )
+                    }
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
+                        sh '''
+                            git config user.email "jenkins@ci.local"
+                            git config user.name "Jenkins CI"
+                            git add version.yaml
+                            git commit -m "Release: cut $RELEASE_VERSION"
+                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git $RELEASE_BRANCH
+                        '''
+                    }
+                }
+            }
+        }
+
+        // Release cikmadan once son bir dogrulama - butun modulleri build/test et
+        stage('Create .env') {
+            steps {
+                dir('repo') {
+                    sh '''
+                    cat > .env <<EOF
+                    MONGODB_URI=mongodb://admin:password@mongodb:27017/?authSource=admin
+                    DATABASE_NAME=todo_app
+                    COLLECTION_NAME=tasks
+                    API_HOST=0.0.0.0
+                    API_PORT=8000
+                    ALLOWED_ORIGINS=http://localhost
+                    EOF
+                    '''
+                }
+            }
+        }
+
+        stage('Build & Test All Modules') {
+            steps {
+                dir('repo') {
+                    sh '''
+                    docker compose -f app-docker.compose.yaml build
+                    docker compose -f app-docker.compose.yaml up -d
+                    sleep 10
+                    curl --fail http://backend:8000/health
+                    '''
+                }
+            }
+            post {
+                always {
+                    dir('repo') {
+                        sh '''
+                        docker compose -f app-docker.compose.yaml down
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Build & Push Release Images') {
+            steps {
+                dir('repo') {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'dockerhub-creds',
+                        usernameVariable: 'DOCKER_USERNAME',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )]) {
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | docker login --username "$DOCKER_USERNAME" --password-stdin
+
+                            docker build -t denizhansan/todo-backend:$RELEASE_VERSION ./backend
+                            docker build -t denizhansan/todo-frontend:$RELEASE_VERSION ./frontend
+
+                            docker push denizhansan/todo-backend:$RELEASE_VERSION
+                            docker push denizhansan/todo-frontend:$RELEASE_VERSION
+
+                            docker logout
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Bump Develop To Next Cycle') {
+            steps {
+                dir('repo') {
+                    sh 'git checkout develop'
+                    script {
+                        def versionFile = readYaml file: 'version.yaml'
+
+                        if (params.BUMP_TYPE == 'major') {
+                            versionFile.version.major = (versionFile.version.major as Integer) + 1
+                            versionFile.version.minor = 0
+                        } else {
+                            versionFile.version.minor = (versionFile.version.minor as Integer) + 1
+                        }
+                        versionFile.version.patch = 0
+                        versionFile.version.'pre-release' = 'dev'
+
+                        writeYaml(
+                            file: 'version.yaml',
+                            data: versionFile,
+                            overwrite: true
+                        )
+
+                        env.NEXT_DEV_VERSION = "${versionFile.version.major}.${versionFile.version.minor}.${versionFile.version.patch}-dev"
+                    }
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GIT_USERNAME',
+                        passwordVariable: 'GIT_TOKEN'
+                    )]) {
+                        sh '''
+                            git add version.yaml
+                            git commit -m "CI: start next dev cycle -> $NEXT_DEV_VERSION [skip ci]"
+                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git develop
+                        '''
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Release branch olusturuldu: ${env.RELEASE_BRANCH} (${env.RELEASE_VERSION})"
+            echo "Develop yeni cycle a gecti: ${env.NEXT_DEV_VERSION}"
+        }
+    }
+}
