@@ -47,6 +47,11 @@ pipeline {
 
         stage('Test') {
             steps {
+                sh '''
+                pwd
+                ls -la
+                '''
+                
                 echo 'Testing..'
                 sh '''
                 set -e
@@ -189,7 +194,7 @@ pipeline {
                     env.MAJOR = versionFile.version.major.toString()
                     env.MINOR = versionFile.version.minor.toString()
                     env.PATCH = versionFile.version.patch.toString()
-                    env.PRERELEASE = versionFile.version.prerelease
+                    env.PRERELEASE = versionFile.version.pre-release
 
                     env.VERSION_STRING =
                         "${env.MAJOR}.${env.MINOR}.${env.PATCH}-${env.PRERELEASE}"
