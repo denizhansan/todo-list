@@ -196,6 +196,10 @@ pipeline {
 
                     echo "New Version : ${env.VERSION_STRING}"
                 }
+                sh '''
+                echo "version.yaml after update:"
+                cat version.yaml
+                '''
             }
         }
 
