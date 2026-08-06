@@ -23,7 +23,7 @@ pipeline {
                 )]) {
                     sh '''
                         rm -rf repo
-                        git clone https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git repo
+                        git clone https://$GIT_USERNAME:$GIT_TOKEN@github.com/denizhansan/todo-list.git repo
                         cd repo
                         git checkout develop
                     '''
