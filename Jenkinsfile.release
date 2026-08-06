@@ -6,6 +6,15 @@ pipeline {
     }
 
     stages {
+        stage('SCM Skip [skip ci]') {
+            steps {
+                scmSkip(
+                    deleteBuild: false,
+                    skipPattern: '.*\\[skip ci\\].*'
+                )
+            }
+        }
+        
         stage('Read version.yaml') {
             steps {
                 script {
@@ -179,7 +188,7 @@ pipeline {
                         git config user.name "Jenkins CI"
                         git add version.yaml
                         git commit -m "Release: bump patch to $VERSION_STRING [skip ci]"
-                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git HEAD:${BRANCH_NAME}
+                        git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/denizhansan/todo-list.git HEAD:${BRANCH_NAME}
                     '''
                 }
             }

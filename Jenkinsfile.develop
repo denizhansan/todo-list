@@ -6,6 +6,15 @@ pipeline {
     }
 
     stages {
+        stage('SCM Skip [skip ci]') {
+            steps {
+                scmSkip(
+                    deleteBuild: false,
+                    skipPattern: '.*\\[skip ci\\].*'
+                )
+            }
+        }
+        
         stage('Read version.yaml') {
             steps {
                 script {

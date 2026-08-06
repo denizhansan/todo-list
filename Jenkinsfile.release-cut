@@ -70,7 +70,7 @@ pipeline {
                             git config user.name "Jenkins CI"
                             git add version.yaml
                             git commit -m "Release: cut $RELEASE_VERSION"
-                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git $RELEASE_BRANCH
+                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/denizhansan/todo-list.git $RELEASE_BRANCH
                         '''
                     }
                 }
