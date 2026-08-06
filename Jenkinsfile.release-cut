@@ -173,7 +173,7 @@ pipeline {
                         sh '''
                             git add version.yaml
                             git commit -m "CI: start next dev cycle -> $NEXT_DEV_VERSION [skip ci]"
-                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/<ORG>/<REPO>.git develop
+                            git push https://$GIT_USERNAME:$GIT_TOKEN@github.com/denizhansan/todo-list.git develop
                         '''
                     }
                 }
