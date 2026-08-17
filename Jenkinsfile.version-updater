@@ -1,0 +1,164 @@
+/*
+  Version-Updater
+  ---------------
+  Branch : develop
+  Görev  : MODULE parametresine göre version.yaml'ı güncelle ve
+           develop branch'ine commit & push et.
+
+  Parametreler:
+    MODULE : 'backend-module' veya 'frontend-module'
+
+  Kurallar:
+    - Her zaman 'todo-app' versiyonu 1 artırılır (patch)
+    - Sadece belirtilen MODULE'ün versiyonu 1 artırılır (patch)
+    - Diğer modülün versiyonu değişmez
+*/
+
+pipeline {
+    agent {
+        node { label 'todo-jenkins-agent' }
+    }
+
+    parameters {
+        string(
+            name: 'MODULE',
+            defaultValue: '',
+            description: "Versiyonu artırılacak modül: 'backend-module' veya 'frontend-module'"
+        )
+    }
+
+    environment {
+        GITHUB_REPO   = 'denizhansan/todo-list'
+        TARGET_BRANCH = 'develop'
+        VERSION_FILE  = 'version.yaml'
+    }
+
+    stages {
+
+        // ------------------------------------------------------------------
+        // 1. Parametreyi doğrula
+        // ------------------------------------------------------------------
+        stage('Validate Parameter') {
+            steps {
+                script {
+                    if (!params.MODULE) {
+                        error("MODULE parametresi boş. 'backend-module' veya 'frontend-module' gönderilmeli.")
+                    }
+
+                    if (params.MODULE != 'backend-module' && params.MODULE != 'frontend-module') {
+                        error("Geçersiz MODULE değeri: '${params.MODULE}'. Kabul edilen değerler: 'backend-module', 'frontend-module'")
+                    }
+
+                    echo "Güncellenecek modül: ${params.MODULE}"
+                }
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 2. Develop branch'ini checkout et
+        // ------------------------------------------------------------------
+        stage('Checkout Develop') {
+            steps {
+                echo "Develop branch'i checkout ediliyor..."
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "refs/heads/${TARGET_BRANCH}"]],
+                    userRemoteConfigs: [[
+                        url: "https://github.com/${GITHUB_REPO}.git",
+                        credentialsId: 'github-creds'
+                    ]]
+                ])
+                echo "Checkout tamamlandı."
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 3. version.yaml'ı oku ve versiyonları artır
+        // ------------------------------------------------------------------
+        stage('Update version.yaml') {
+            steps {
+                script {
+                    withCredentials([usernamePassword(
+                        credentialsId: 'github-creds',
+                        usernameVariable: 'GITHUB_USERNAME',
+                        passwordVariable: 'GITHUB_TOKEN'
+                    )]) {
+                        sh """
+                            set -e
+
+                            echo "=== Mevcut version.yaml ==="
+                            cat ${VERSION_FILE}
+
+                            # Mevcut versiyonları oku
+                            TODO_APP_VERSION=\$(grep '^todo-app:' ${VERSION_FILE} | awk '{print \$2}')
+                            BACKEND_VERSION=\$(grep '^backend-module:' ${VERSION_FILE} | awk '{print \$2}')
+                            FRONTEND_VERSION=\$(grep '^frontend-module:' ${VERSION_FILE} | awk '{print \$2}')
+
+                            echo "Mevcut todo-app       : \$TODO_APP_VERSION"
+                            echo "Mevcut backend-module : \$BACKEND_VERSION"
+                            echo "Mevcut frontend-module: \$FRONTEND_VERSION"
+
+                            # todo-app patch versiyonu artır (her zaman)
+                            TODO_MAJOR=\$(echo \$TODO_APP_VERSION | cut -d. -f1)
+                            TODO_MINOR=\$(echo \$TODO_APP_VERSION | cut -d. -f2)
+                            TODO_PATCH=\$(echo \$TODO_APP_VERSION | cut -d. -f3)
+                            NEW_TODO_VERSION="\$TODO_MAJOR.\$TODO_MINOR.\$((TODO_PATCH + 1))"
+
+                            # Seçilen modülün patch versiyonunu artır
+                            if [ "${params.MODULE}" = "backend-module" ]; then
+                                BACK_MAJOR=\$(echo \$BACKEND_VERSION | cut -d. -f1)
+                                BACK_MINOR=\$(echo \$BACKEND_VERSION | cut -d. -f2)
+                                BACK_PATCH=\$(echo \$BACKEND_VERSION | cut -d. -f3)
+                                NEW_BACKEND_VERSION="\$BACK_MAJOR.\$BACK_MINOR.\$((BACK_PATCH + 1))"
+                                NEW_FRONTEND_VERSION="\$FRONTEND_VERSION"
+                            else
+                                FRONT_MAJOR=\$(echo \$FRONTEND_VERSION | cut -d. -f1)
+                                FRONT_MINOR=\$(echo \$FRONTEND_VERSION | cut -d. -f2)
+                                FRONT_PATCH=\$(echo \$FRONTEND_VERSION | cut -d. -f3)
+                                NEW_FRONTEND_VERSION="\$FRONT_MAJOR.\$FRONT_MINOR.\$((FRONT_PATCH + 1))"
+                                NEW_BACKEND_VERSION="\$BACKEND_VERSION"
+                            fi
+
+                            echo "Yeni todo-app       : \$NEW_TODO_VERSION"
+                            echo "Yeni backend-module : \$NEW_BACKEND_VERSION"
+                            echo "Yeni frontend-module: \$NEW_FRONTEND_VERSION"
+
+                            # version.yaml'ı güncelle
+                            sed -i "s|^todo-app:.*|todo-app: \$NEW_TODO_VERSION|"           ${VERSION_FILE}
+                            sed -i "s|^backend-module:.*|backend-module: \$NEW_BACKEND_VERSION|"   ${VERSION_FILE}
+                            sed -i "s|^frontend-module:.*|frontend-module: \$NEW_FRONTEND_VERSION|" ${VERSION_FILE}
+
+                            echo "=== Güncel version.yaml ==="
+                            cat ${VERSION_FILE}
+
+                            # Git commit ve push
+                            git config user.email "jenkins@ci.local"
+                            git config user.name  "Jenkins"
+
+                            git remote set-url origin https://\$GITHUB_USERNAME:\$GITHUB_TOKEN@github.com/${GITHUB_REPO}.git
+
+                            git add ${VERSION_FILE}
+                            git commit -m "chore: bump ${params.MODULE} version [skip ci]
+
+todo-app       : \$TODO_APP_VERSION -> \$NEW_TODO_VERSION
+${params.MODULE}: \$([ '${params.MODULE}' = 'backend-module' ] && echo "\$BACKEND_VERSION -> \$NEW_BACKEND_VERSION" || echo "\$FRONTEND_VERSION -> \$NEW_FRONTEND_VERSION")"
+
+                            git push origin ${TARGET_BRANCH}
+
+                            echo "version.yaml başarıyla commit edildi ve push edildi."
+                        """
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Version-Updater başarıyla tamamlandı. version.yaml develop branch'ine push edildi."
+        }
+        failure {
+            echo "Version-Updater başarısız oldu."
+        }
+    }
+}
