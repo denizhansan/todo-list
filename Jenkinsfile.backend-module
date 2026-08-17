@@ -41,7 +41,7 @@ pipeline {
 
     post {
         success {
-            echo 'Backend module pipeline SUCCESS'
+            echo 'Backend module pipeline SUCCESS.'
         }
 
         failure {
@@ -57,4 +57,3 @@ pipeline {
         }
     }
 }
-#a
