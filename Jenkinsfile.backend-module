@@ -1,28 +1,3 @@
-<<<<<<< Updated upstream
-/*
-  Backend-Module-Pipeline
-  -----------------------
-  Branch : backend-module
-  Görev  : Sadece backend kodunu doğrula ve testleri çalıştır.
-           SUCCESS veya FAILURE döndür.
-
-  Bu pipeline:
-    - PR merge etmez
-    - version.yaml değiştirmez
-    - Docker Hub'a push yapmaz
-    - Deploy yapmaz
-*/
-
-pipeline {
-    agent {
-        node { label 'todo-jenkins-agent' }
-    }
-
-    environment {
-        COMPOSE_FILE      = 'jenkins-docker.compose.yaml'
-        COMPOSE_PROJECT   = "backend-test-${env.BUILD_NUMBER}"
-        BACKEND_CONTAINER = 'todo-backend-container'
-=======
 pipeline {
     agent {
         node {
@@ -36,127 +11,10 @@ pipeline {
             defaultValue: 'backend-module',
             description: 'Build edilecek branch'
         )
->>>>>>> Stashed changes
     }
 
     stages {
 
-<<<<<<< Updated upstream
-        // ------------------------------------------------------------------
-        // 1. Backend-module branch'ini checkout et
-        // ------------------------------------------------------------------
-        stage('Checkout') {
-            steps {
-                echo "Backend-module branch'i checkout ediliyor..."
-                checkout scm
-                echo "Checkout tamamlandı."
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // 2. Docker image'ı build et (kod doğrulama)
-        // ------------------------------------------------------------------
-        stage('Build') {
-            steps {
-                echo "Backend Docker image'ı build ediliyor..."
-                sh """
-                    docker compose -f ${COMPOSE_FILE} -p ${COMPOSE_PROJECT} build
-                """
-                echo "Build tamamlandı."
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // 3. Konteynerleri ayağa kaldır
-        // ------------------------------------------------------------------
-        stage('Start Containers') {
-            steps {
-                echo "Test konteynerleri başlatılıyor..."
-                sh """
-                    docker compose -f ${COMPOSE_FILE} -p ${COMPOSE_PROJECT} up -d
-                """
-                echo "Konteynerler başlatıldı."
-            }
-        }
-
-        // ------------------------------------------------------------------
-        // 4. API testleri
-        // ------------------------------------------------------------------
-        stage('Test') {
-            steps {
-                echo "Backend testleri çalıştırılıyor..."
-                sh """
-                    set -e
-
-                    echo "Backend'in hazır olması bekleniyor..."
-                    sleep 10
-
-                    echo "=== Health check ==="
-                    curl --fail http://${BACKEND_CONTAINER}:8000/health
-
-                    echo "=== Görev oluşturma testi ==="
-                    response=\$(curl --fail -X POST http://${BACKEND_CONTAINER}:8000/tasks \\
-                        -H "Content-Type: application/json" \\
-                        -d '{"title": "Test Task", "description": "This is a test task."}')
-                    task_id=\$(echo "\$response" | jq -r '._id')
-                    echo "Oluşturulan görev ID: \$task_id"
-
-                    echo "=== Görev okuma testi ==="
-                    task=\$(curl --fail http://${BACKEND_CONTAINER}:8000/tasks/\$task_id)
-                    echo "Görev detayları: \$task"
-
-                    title=\$(echo "\$task" | jq -r '.title')
-                    if [ "\$title" != "Test Task" ]; then
-                        echo "HATA: Beklenen başlık 'Test Task', gelen: '\$title'"
-                        exit 1
-                    fi
-
-                    echo "=== Görev güncelleme testi ==="
-                    old_time=\$(echo "\$task" | jq -r '.updated_at')
-                    echo "Eski updated_at: \$old_time"
-
-                    updated_task=\$(curl --fail -X PUT http://${BACKEND_CONTAINER}:8000/tasks/\$task_id \\
-                        -H "Content-Type: application/json" \\
-                        -d '{"title": "Test Task - Edited", "description": "Updated description."}')
-                    updated_time=\$(echo "\$updated_task" | jq -r '.updated_at')
-                    echo "Yeni updated_at: \$updated_time"
-
-                    if [ "\$old_time" = "\$updated_time" ]; then
-                        echo "HATA: Görev güncellenmedi (updated_at değişmedi)"
-                        exit 1
-                    fi
-
-                    echo "=== Görev tamamlama testi ==="
-                    check=\$(curl --fail -X PATCH http://${BACKEND_CONTAINER}:8000/tasks/\$task_id/complete)
-                    completed=\$(echo "\$check" | jq -r '.completed')
-                    if [ "\$completed" != "true" ]; then
-                        echo "HATA: Görev tamamlanamadı"
-                        exit 1
-                    fi
-
-                    echo "=== Görev aktif yapma testi ==="
-                    check=\$(curl --fail -X PATCH http://${BACKEND_CONTAINER}:8000/tasks/\$task_id/uncomplete)
-                    uncompleted=\$(echo "\$check" | jq -r '.completed')
-                    if [ "\$uncompleted" != "false" ]; then
-                        echo "HATA: Görev aktif yapılamadı"
-                        exit 1
-                    fi
-
-                    echo "=== Görev silme testi ==="
-                    curl --fail -X DELETE http://${BACKEND_CONTAINER}:8000/tasks/\$task_id
-
-                    echo "=== Silinmiş görevi kontrol et ==="
-                    status_code=\$(curl -o /dev/null -s -w "%{http_code}" \\
-                        http://${BACKEND_CONTAINER}:8000/tasks/\$task_id)
-                    echo "HTTP durum kodu: \$status_code"
-                    if [ "\$status_code" != "404" ]; then
-                        echo "HATA: Görev silinemedi (beklenen 404, gelen: \$status_code)"
-                        exit 1
-                    fi
-
-                    echo "Tüm testler başarıyla geçti."
-                """
-=======
         stage('Checkout') {
             steps {
                 checkout([
@@ -177,29 +35,11 @@ pipeline {
                         docker build -t denizhansan/todo-backend:${BUILD_NUMBER} .
                     '''
                 }
->>>>>>> Stashed changes
             }
         }
     }
 
     post {
-<<<<<<< Updated upstream
-        always {
-            echo "Test konteynerleri temizleniyor..."
-            sh """
-                docker compose -f ${COMPOSE_FILE} -p ${COMPOSE_PROJECT} down --volumes --remove-orphans || true
-            """
-            echo "Temizlik tamamlandı."
-        }
-        success {
-            echo "Backend-Module-Pipeline başarıyla tamamlandı."
-        }
-        failure {
-            echo "Backend-Module-Pipeline başarısız oldu."
-        }
-    }
-}
-=======
         success {
             echo 'Backend module pipeline SUCCESS'
         }
@@ -217,4 +57,4 @@ pipeline {
         }
     }
 }
->>>>>>> Stashed changes
+#a
