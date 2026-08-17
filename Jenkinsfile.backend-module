@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 /*
   Backend-Module-Pipeline
   -----------------------
@@ -21,10 +22,26 @@ pipeline {
         COMPOSE_FILE      = 'jenkins-docker.compose.yaml'
         COMPOSE_PROJECT   = "backend-test-${env.BUILD_NUMBER}"
         BACKEND_CONTAINER = 'todo-backend-container'
+=======
+pipeline {
+    agent {
+        node {
+            label 'todo-jenkins-agent'
+        }
+    }
+
+    parameters {
+        string(
+            name: 'SOURCE_BRANCH',
+            defaultValue: 'backend-module',
+            description: 'Build edilecek branch'
+        )
+>>>>>>> Stashed changes
     }
 
     stages {
 
+<<<<<<< Updated upstream
         // ------------------------------------------------------------------
         // 1. Backend-module branch'ini checkout et
         // ------------------------------------------------------------------
@@ -139,11 +156,34 @@ pipeline {
 
                     echo "Tüm testler başarıyla geçti."
                 """
+=======
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "*/${params.SOURCE_BRANCH}"]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/denizhansan/todo-list.git',
+                        credentialsId: 'github-credentials'
+                    ]]
+                ])
+            }
+        }
+
+        stage('Backend Docker Build') {
+            steps {
+                dir('backend') {
+                    sh '''
+                        docker build -t denizhansan/todo-backend:${BUILD_NUMBER} .
+                    '''
+                }
+>>>>>>> Stashed changes
             }
         }
     }
 
     post {
+<<<<<<< Updated upstream
         always {
             echo "Test konteynerleri temizleniyor..."
             sh """
@@ -159,3 +199,22 @@ pipeline {
         }
     }
 }
+=======
+        success {
+            echo 'Backend module pipeline SUCCESS'
+        }
+
+        failure {
+            echo 'Backend module pipeline FAILED'
+        }
+
+        always {
+            sh '''
+                docker image rm denizhansan/todo-backend:${BUILD_NUMBER} || true
+            '''
+
+            cleanWs()
+        }
+    }
+}
+>>>>>>> Stashed changes
