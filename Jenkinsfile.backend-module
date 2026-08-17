@@ -1,0 +1,67 @@
+pipeline {
+    agent {
+        node {
+            label 'todo-jenkins-agent'
+        }
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: '*/backend-module']],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/denizhansan/todo-list.git',
+                        credentialsId: 'github-credentials'
+                    ]]
+                ])
+            }
+        }
+
+        stage('Read Version') {
+            steps {
+                script {
+                    def versionFile = readYaml file: 'version.yaml'
+
+                    env.BACKEND_VERSION =
+                        versionFile.versions['backend-module'].toString()
+
+                    echo "Backend version: ${env.BACKEND_VERSION}"
+                }
+            }
+        }
+
+        stage('Backend Docker Build') {
+            steps {
+                dir('backend') {
+                    sh '''
+                        docker build \
+                            -t denizhansan/todo-backend:${BACKEND_VERSION} \
+                            .
+                    '''
+                }
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo 'Backend module pipeline SUCCESS.'
+        }
+
+        failure {
+            echo 'Backend module pipeline FAILED.'
+        }
+
+        always {
+            sh '''
+                docker image rm denizhansan/todo-backend:${BACKEND_VERSION} || true
+            '''
+
+            cleanWs()
+        }
+    }
+}
