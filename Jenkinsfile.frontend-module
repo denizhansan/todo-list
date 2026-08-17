@@ -1,0 +1,141 @@
+/*
+  Frontend-Module-Pipeline
+  ------------------------
+  Branch : frontend-module
+  Görev  : Sadece frontend kodunu doğrula ve testleri çalıştır.
+           SUCCESS veya FAILURE döndür.
+
+  Bu pipeline:
+    - PR merge etmez
+    - version.yaml değiştirmez
+    - Docker Hub'a push yapmaz
+    - Deploy yapmaz
+
+  Not: Vanilla JS/HTML projesi olduğundan harici test framework'ü yok.
+       Gerekli dosyaların varlığı ve HTML yapısı doğrulanır.
+*/
+
+pipeline {
+    agent {
+        node { label 'todo-jenkins-agent' }
+    }
+
+    stages {
+
+        // ------------------------------------------------------------------
+        // 1. Frontend-module branch'ini checkout et
+        // ------------------------------------------------------------------
+        stage('Checkout') {
+            steps {
+                echo "Frontend-module branch'i checkout ediliyor..."
+                checkout scm
+                echo "Checkout tamamlandı."
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 2. Gerekli dosyaların varlığını doğrula
+        // ------------------------------------------------------------------
+        stage('Build / Validation') {
+            steps {
+                echo "Frontend dosyaları doğrulanıyor..."
+                sh """
+                    set -e
+
+                    echo "=== Gerekli dosya kontrolü ==="
+
+                    for file in frontend/index.html frontend/style.css frontend/script.js; do
+                        if [ ! -f "\$file" ]; then
+                            echo "HATA: Gerekli dosya bulunamadı: \$file"
+                            exit 1
+                        fi
+                        echo "OK: \$file mevcut"
+                    done
+
+                    echo "=== index.html yapı kontrolü ==="
+
+                    if ! grep -q "<!DOCTYPE html>" frontend/index.html; then
+                        echo "HATA: index.html geçerli bir DOCTYPE içermiyor"
+                        exit 1
+                    fi
+                    echo "OK: DOCTYPE mevcut"
+
+                    if ! grep -q "style.css" frontend/index.html; then
+                        echo "HATA: index.html style.css bağlantısı içermiyor"
+                        exit 1
+                    fi
+                    echo "OK: style.css bağlantısı mevcut"
+
+                    if ! grep -q "script.js" frontend/index.html; then
+                        echo "HATA: index.html script.js bağlantısı içermiyor"
+                        exit 1
+                    fi
+                    echo "OK: script.js bağlantısı mevcut"
+
+                    echo "=== script.js API bağlantısı kontrolü ==="
+
+                    if ! grep -q "API_BASE_URL" frontend/script.js; then
+                        echo "HATA: script.js API_BASE_URL tanımı içermiyor"
+                        exit 1
+                    fi
+                    echo "OK: API_BASE_URL mevcut"
+
+                    echo "Tüm frontend doğrulamaları başarıyla geçti."
+                """
+            }
+        }
+
+        // ------------------------------------------------------------------
+        // 3. Basit HTTP testi: Nginx ile frontend'i ayağa kaldır
+        // ------------------------------------------------------------------
+        stage('Test') {
+            steps {
+                echo "Frontend HTTP erişim testi çalıştırılıyor..."
+                sh """
+                    set -e
+
+                    echo "=== Frontend Docker image build ediliyor ==="
+                    docker build -t todo-frontend-test:${env.BUILD_NUMBER} -f frontend/Dockerfile frontend/
+
+                    echo "=== Frontend konteyneri başlatılıyor ==="
+                    docker run -d \\
+                        --name todo-frontend-test-${env.BUILD_NUMBER} \\
+                        -p 8081:80 \\
+                        todo-frontend-test:${env.BUILD_NUMBER}
+
+                    sleep 3
+
+                    echo "=== HTTP erişim testi ==="
+                    status_code=\$(curl -o /dev/null -s -w "%{http_code}" http://localhost:8081)
+                    echo "HTTP durum kodu: \$status_code"
+
+                    if [ "\$status_code" != "200" ]; then
+                        echo "HATA: Frontend HTTP 200 döndürmüyor. Gelen: \$status_code"
+                        exit 1
+                    fi
+
+                    echo "OK: Frontend erişilebilir ve HTTP 200 dönüyor."
+                    echo "Tüm frontend testleri başarıyla geçti."
+                """
+            }
+        }
+    }
+
+    post {
+        always {
+            echo "Frontend test konteyneri temizleniyor..."
+            sh """
+                docker stop todo-frontend-test-${env.BUILD_NUMBER} 2>/dev/null || true
+                docker rm   todo-frontend-test-${env.BUILD_NUMBER} 2>/dev/null || true
+                docker rmi  todo-frontend-test:${env.BUILD_NUMBER} 2>/dev/null || true
+            """
+            echo "Temizlik tamamlandı."
+        }
+        success {
+            echo "Frontend-Module-Pipeline başarıyla tamamlandı."
+        }
+        failure {
+            echo "Frontend-Module-Pipeline başarısız oldu."
+        }
+    }
+}
