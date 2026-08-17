@@ -1,0 +1,146 @@
+pipeline {
+    agent {
+        node {
+            label 'todo-jenkins-agent'
+        }
+    }
+
+    stages {
+
+        stage('Identify Target Module') {
+            steps {
+                script {
+                    echo "PR ID          : ${env.CHANGE_ID}"
+                    echo "Source Branch  : ${env.CHANGE_BRANCH}"
+                    echo "Target Branch  : ${env.CHANGE_TARGET}"
+
+                    if (env.CHANGE_TARGET == 'backend-module') {
+                        env.MODULE_JOB = 'backend-module'
+                    }
+                    else if (env.CHANGE_TARGET == 'frontend-module') {
+                        env.MODULE_JOB = 'frontend-module'
+                    }
+                    else {
+                        error(
+                            "Unsupported target branch: ${env.CHANGE_TARGET}. " +
+                            "PR must target backend-module or frontend-module."
+                        )
+                    }
+
+                    echo "Selected Module Job: ${env.MODULE_JOB}"
+                }
+            }
+        }
+
+        stage('Run Module Pipeline') {
+            steps {
+                script {
+                    echo "Starting ${env.MODULE_JOB} pipeline..."
+
+                    def moduleBuild = build(
+                        job: env.MODULE_JOB,
+                        wait: true,
+                        propagate: false
+                    )
+
+                    echo "Module build #${moduleBuild.number}"
+                    echo "Module build result: ${moduleBuild.result}"
+
+                    if (moduleBuild.result != 'SUCCESS') {
+                        error(
+                            "${env.MODULE_JOB} pipeline failed. " +
+                            "PR cannot continue."
+                        )
+                    }
+
+                    echo "${env.MODULE_JOB} pipeline completed successfully."
+                }
+            }
+        }
+
+        stage('Manual Approval') {
+            steps {
+                timeout(time: 30, unit: 'MINUTES') {
+                    input(
+                        message: "PR #${env.CHANGE_ID} → ${env.CHANGE_TARGET} merge edilsin mi?",
+                        ok: 'Merge Et'
+                    )
+                }
+            }
+        }
+
+        stage('Merge Pull Request') {
+            steps {
+                script {
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'github-creds',
+                            usernameVariable: 'GITHUB_USERNAME',
+                            passwordVariable: 'GITHUB_TOKEN'
+                        )
+                    ]) {
+                        sh '''
+                            set -e
+
+                            echo "Merging PR #${CHANGE_ID}..."
+
+                            response=$(curl -sS \
+                                -X PUT \
+                                -H "Accept: application/vnd.github+json" \
+                                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+                                -H "X-GitHub-Api-Version: 2022-11-28" \
+                                "https://api.github.com/repos/denizhansan/todo-list/pulls/${CHANGE_ID}/merge")
+
+                            echo "${response}"
+
+                            merged=$(echo "${response}" \
+                                | grep -o '"merged":[^,]*' \
+                                | head -1 \
+                                | cut -d':' -f2)
+
+                            if [ "${merged}" != "true" ]; then
+                                echo "PR merge failed."
+                                exit 1
+                            fi
+
+                            echo "PR #${CHANGE_ID} merged successfully."
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Trigger Version Updater') {
+            steps {
+                script {
+                    echo "Triggering Version Updater..."
+
+                    build(
+                        job: 'version-updater',
+                        wait: true,
+                        propagate: true
+                    )
+                }
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo 'PR pipeline SUCCESS.'
+        }
+
+        failure {
+            echo 'PR pipeline FAILED.'
+        }
+
+        aborted {
+            echo 'PR pipeline ABORTED.'
+        }
+
+        always {
+            cleanWs()
+        }
+    }
+}
