@@ -49,77 +49,11 @@ pipeline {
                     if (moduleBuild.result != 'SUCCESS') {
                         error(
                             "${env.MODULE_JOB} pipeline failed. " +
-                            "PR cannot continue."
+                            "PR cannot be merged."
                         )
                     }
 
                     echo "${env.MODULE_JOB} pipeline completed successfully."
-                }
-            }
-        }
-
-        stage('Manual Approval') {
-            steps {
-                timeout(time: 30, unit: 'MINUTES') {
-                    input(
-                        message: "PR #${env.CHANGE_ID} → ${env.CHANGE_TARGET} merge edilsin mi?",
-                        ok: 'Merge Et'
-                    )
-                }
-            }
-        }
-
-        stage('Merge Pull Request') {
-            steps {
-                script {
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: 'github-creds',
-                            usernameVariable: 'GITHUB_USERNAME',
-                            passwordVariable: 'GITHUB_TOKEN'
-                        )
-                    ]) {
-                        sh '''
-                            set -e
-
-                            echo "Merging PR #${CHANGE_ID}..."
-
-                            response=$(curl -sS \
-                                -X PUT \
-                                -H "Accept: application/vnd.github+json" \
-                                -H "Authorization: Bearer ${GITHUB_TOKEN}" \
-                                -H "X-GitHub-Api-Version: 2022-11-28" \
-                                "https://api.github.com/repos/denizhansan/todo-list/pulls/${CHANGE_ID}/merge")
-
-                            echo "${response}"
-
-                            merged=$(echo "${response}" \
-                                | grep -o '"merged":[^,]*' \
-                                | head -1 \
-                                | cut -d':' -f2)
-
-                            if [ "${merged}" != "true" ]; then
-                                echo "PR merge failed."
-                                exit 1
-                            fi
-
-                            echo "PR #${CHANGE_ID} merged successfully."
-                        '''
-                    }
-                }
-            }
-        }
-
-        stage('Trigger Version Updater') {
-            steps {
-                script {
-                    echo "Triggering Version Updater..."
-
-                    build(
-                        job: 'version-updater',
-                        wait: true,
-                        propagate: true
-                    )
                 }
             }
         }
@@ -128,15 +62,17 @@ pipeline {
     post {
 
         success {
-            echo 'PR pipeline SUCCESS.'
+            echo "PR checks SUCCESS."
+            echo "You can now merge this Pull Request from GitHub."
         }
 
         failure {
-            echo 'PR pipeline FAILED.'
+            echo "PR checks FAILED."
+            echo "Pull Request should not be merged."
         }
 
         aborted {
-            echo 'PR pipeline ABORTED.'
+            echo "PR checks ABORTED."
         }
 
         always {
