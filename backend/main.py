@@ -74,4 +74,4 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
-# PR pipeline test deneme 2
+# PR pipeline test deneme 3
