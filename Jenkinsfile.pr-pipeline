@@ -39,6 +39,12 @@ pipeline {
 
                     def moduleBuild = build(
                         job: env.MODULE_JOB,
+                        parameters: [
+                            string(
+                                name: 'PR_NUMBER',
+                                value: env.CHANGE_ID
+                            )
+                        ],
                         wait: true,
                         propagate: false
                     )

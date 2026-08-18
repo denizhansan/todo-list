@@ -5,13 +5,19 @@ pipeline {
         }
     }
 
+    parameters {
+        string(
+            name: 'PR_NUMBER',
+            description: 'Pull Request number'
+        )
+    }
     stages {
 
         stage('Checkout') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: '*/backend-module']],
+                    branches: [[name: "refs/pull/${params.PR_NUMBER}/head"]],
                     userRemoteConfigs: [[
                         url: 'https://github.com/denizhansan/todo-list.git',
                         credentialsId: 'github-credentials'
@@ -23,11 +29,9 @@ pipeline {
         stage('Read Version') {
             steps {
                 script {
-                    def versionFile = readYaml file: 'version.yaml'
+                    env.BACKEND_VERSION = "pr-${params.PR_NUMBER}"
 
-                    env.BACKEND_VERSION =
-                        versionFile.versions['backend-module'].toString()
-
+                    echo "PR number: ${params.PR_NUMBER}"
                     echo "Backend version: ${env.BACKEND_VERSION}"
                 }
             }
