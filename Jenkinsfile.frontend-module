@@ -5,34 +5,35 @@ pipeline {
         }
     }
 
+    parameters {
+        string(
+            name: 'PR_NUMBER',
+            description: 'Pull Request number'
+        )
+    }
+
     stages {
+
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: [[name: "refs/remotes/origin/pr/${params.PR_NUMBER}/head"]],
+                    userRemoteConfigs: [[
+                        url: 'https://github.com/denizhansan/todo-list.git',
+                        credentialsId: 'github-creds',
+                        refspec: "+refs/pull/${params.PR_NUMBER}/head:refs/remotes/origin/pr/${params.PR_NUMBER}/head"
+                    ]]
+                ])
+            }
+        }
 
         stage('Read Version') {
             steps {
                 script {
-                    sh '''
-                        git fetch origin develop:refs/remotes/origin/develop
-                        git show origin/develop:version.yaml > version.yaml
+                    env.FRONTEND_VERSION = "pr-${params.PR_NUMBER}"
 
-                        echo "===== version.yaml ====="
-                        cat version.yaml
-                        echo "========================"
-                    '''
-
-                    def frontendVersion = sh(
-                        script: """
-                            grep '^[[:space:]]*frontend-module:' version.yaml | \
-                            sed 's/.*frontend-module:[[:space:]]*//'
-                        """,
-                        returnStdout: true
-                    ).trim()
-
-                    if (!frontendVersion) {
-                        error('version.yaml içerisinde frontend-module version bulunamadı.')
-                    }
-
-                    env.FRONTEND_VERSION = frontendVersion
-
+                    echo "PR number: ${params.PR_NUMBER}"
                     echo "Frontend version: ${env.FRONTEND_VERSION}"
                 }
             }
@@ -63,9 +64,7 @@ pipeline {
 
         always {
             sh '''
-                if [ -n "${FRONTEND_VERSION}" ]; then
-                    docker image rm denizhansan/todo-frontend:${FRONTEND_VERSION} || true
-                fi
+                docker image rm denizhansan/todo-frontend:${FRONTEND_VERSION} || true
             '''
 
             cleanWs()
