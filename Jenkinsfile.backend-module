@@ -17,10 +17,11 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "refs/pull/${params.PR_NUMBER}/head"]],
+                    branches: [[name: "refs/remotes/origin/pr/${params.PR_NUMBER}/head"]],
                     userRemoteConfigs: [[
                         url: 'https://github.com/denizhansan/todo-list.git',
-                        credentialsId: 'github-credentials'
+                        credentialsId: 'github-creds',
+                        refspec: "+refs/pull/${params.PR_NUMBER}/head:refs/remotes/origin/pr/${params.PR_NUMBER}/head"
                     ]]
                 ])
             }
