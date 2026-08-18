@@ -1,5 +1,4 @@
-version:
-  major: 1
-  minor: 0
-  patch: 0
-  pre-release: dev
+versions:
+  todo-app: 1.0.0
+  backend-module: 1.0.0
+  frontend-module: 1.0.0
