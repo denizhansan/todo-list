@@ -7,26 +7,40 @@ pipeline {
 
     stages {
 
-        stage('Identify Module') {
+        stage('Validate Trigger') {
             steps {
                 script {
                     echo "GIT_BRANCH: ${env.GIT_BRANCH}"
-                    echo "BRANCH_NAME: ${env.BRANCH_NAME}"
-                    echo "GIT_LOCAL_BRANCH: ${env.GIT_LOCAL_BRANCH}"
-        
+
+                    if (
+                        env.GIT_BRANCH != 'origin/backend-module' &&
+                        env.GIT_BRANCH != 'origin/frontend-module'
+                    ) {
+                        echo "Ignoring branch: ${env.GIT_BRANCH}"
+                        echo "Version updater only runs for backend-module or frontend-module."
+
+                        currentBuild.result = 'NOT_BUILT'
+                        error(
+                            "Skipping Version Updater. " +
+                            "Unsupported trigger branch: ${env.GIT_BRANCH}"
+                        )
+                    }
+
+                    echo "Valid trigger branch: ${env.GIT_BRANCH}"
+                }
+            }
+        }
+
+        stage('Identify Module') {
+            steps {
+                script {
                     if (env.GIT_BRANCH == 'origin/backend-module') {
                         env.MODULE = 'backend-module'
                     }
                     else if (env.GIT_BRANCH == 'origin/frontend-module') {
                         env.MODULE = 'frontend-module'
                     }
-                    else {
-                        error(
-                            "Unsupported branch. " +
-                            "GIT_BRANCH=${env.GIT_BRANCH}"
-                        )
-                    }
-        
+
                     echo "Selected module: ${env.MODULE}"
                 }
             }
@@ -76,7 +90,6 @@ pipeline {
                         NEW_TODO_VERSION="${TODO_MAJOR}.${TODO_MINOR}.$((TODO_PATCH + 1))"
 
                         yq -i ".versions.\\"${MODULE}\\" = \\"${NEW_MODULE_VERSION}\\"" version.yaml
-
                         yq -i '.versions."todo-app" = "'${NEW_TODO_VERSION}'"' version.yaml
 
                         echo "Updated versions:"
@@ -111,7 +124,6 @@ pipeline {
     }
 
     post {
-
         success {
             echo 'Version updater pipeline SUCCESS.'
         }
