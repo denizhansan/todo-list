@@ -5,30 +5,38 @@ pipeline {
         }
     }
 
-    parameters {
-        choice(
-            name: 'MODULE',
-            choices: [
-                'backend-module',
-                'frontend-module'
-            ],
-            description: 'Module to update'
-        )
-
-        string(
-            name: 'TARGET_BRANCH',
-            defaultValue: 'develop',
-            description: 'Branch where the PR was merged'
-        )
-    }
-
     stages {
 
-        stage('Checkout') {
+        stage('Identify Module') {
+            steps {
+                script {
+                    echo "GIT_BRANCH: ${env.GIT_BRANCH}"
+                    echo "BRANCH_NAME: ${env.BRANCH_NAME}"
+                    echo "GIT_LOCAL_BRANCH: ${env.GIT_LOCAL_BRANCH}"
+        
+                    if (env.GIT_BRANCH == 'origin/backend-module') {
+                        env.MODULE = 'backend-module'
+                    }
+                    else if (env.GIT_BRANCH == 'origin/frontend-module') {
+                        env.MODULE = 'frontend-module'
+                    }
+                    else {
+                        error(
+                            "Unsupported branch. " +
+                            "GIT_BRANCH=${env.GIT_BRANCH}"
+                        )
+                    }
+        
+                    echo "Selected module: ${env.MODULE}"
+                }
+            }
+        }
+
+        stage('Checkout DevOps Branch') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.TARGET_BRANCH}"]],
+                    branches: [[name: '*/devops']],
                     userRemoteConfigs: [[
                         url: 'https://github.com/denizhansan/todo-list.git',
                         credentialsId: 'github-creds'
@@ -40,75 +48,40 @@ pipeline {
         stage('Update Version') {
             steps {
                 script {
-
                     def versionFile = 'version.yaml'
 
                     if (!fileExists(versionFile)) {
-                        error "version.yaml not found!"
+                        error "version.yaml not found in devops branch!"
                     }
 
-                    echo "Updating module: ${params.MODULE}"
-                    echo "Target branch: ${params.TARGET_BRANCH}"
+                    sh '''
+                        echo "Current versions:"
+                        yq '.versions' version.yaml
 
-                    def module = params.MODULE
+                        MODULE_VERSION=$(yq ".versions.\\"${MODULE}\\"" version.yaml)
+                        TODO_VERSION=$(yq '.versions."todo-app"' version.yaml)
 
-                    def versionContent = readFile(versionFile)
+                        echo "Current ${MODULE}: ${MODULE_VERSION}"
+                        echo "Current todo-app: ${TODO_VERSION}"
 
-                    def modulePattern = /(?m)^(\s*${module}:\s*)(\d+)\.(\d+)\.(\d+)\s*$/
-                    def todoPattern = /(?m)^(\s*todo-app:\s*)(\d+)\.(\d+)\.(\d+)\s*$/
+                        MODULE_MAJOR=$(echo "${MODULE_VERSION}" | cut -d. -f1)
+                        MODULE_MINOR=$(echo "${MODULE_VERSION}" | cut -d. -f2)
+                        MODULE_PATCH=$(echo "${MODULE_VERSION}" | cut -d. -f3)
 
-                    def moduleMatch = (versionContent =~ modulePattern)
+                        TODO_MAJOR=$(echo "${TODO_VERSION}" | cut -d. -f1)
+                        TODO_MINOR=$(echo "${TODO_VERSION}" | cut -d. -f2)
+                        TODO_PATCH=$(echo "${TODO_VERSION}" | cut -d. -f3)
 
-                    if (!moduleMatch.find()) {
-                        error "Version for ${module} not found in ${versionFile}"
-                    }
+                        NEW_MODULE_VERSION="${MODULE_MAJOR}.${MODULE_MINOR}.$((MODULE_PATCH + 1))"
+                        NEW_TODO_VERSION="${TODO_MAJOR}.${TODO_MINOR}.$((TODO_PATCH + 1))"
 
-                    def todoMatch = (versionContent =~ todoPattern)
+                        yq -i ".versions.\\"${MODULE}\\" = \\"${NEW_MODULE_VERSION}\\"" version.yaml
 
-                    if (!todoMatch.find()) {
-                        error "Version for todo-app not found in ${versionFile}"
-                    }
+                        yq -i '.versions."todo-app" = "'${NEW_TODO_VERSION}'"' version.yaml
 
-                    def moduleMajor = moduleMatch.group(2).toInteger()
-                    def moduleMinor = moduleMatch.group(3).toInteger()
-                    def modulePatch = moduleMatch.group(4).toInteger()
-
-                    def todoMajor = todoMatch.group(2).toInteger()
-                    def todoMinor = todoMatch.group(3).toInteger()
-                    def todoPatch = todoMatch.group(4).toInteger()
-
-                    def oldModuleVersion =
-                        "${moduleMajor}.${moduleMinor}.${modulePatch}"
-
-                    def oldTodoVersion =
-                        "${todoMajor}.${todoMinor}.${todoPatch}"
-
-                    modulePatch++
-                    todoPatch++
-
-                    def newModuleVersion =
-                        "${moduleMajor}.${moduleMinor}.${modulePatch}"
-
-                    def newTodoVersion =
-                        "${todoMajor}.${todoMinor}.${todoPatch}"
-
-                    versionContent = versionContent.replaceFirst(
-                        modulePattern,
-                        "\$1${newModuleVersion}"
-                    )
-
-                    versionContent = versionContent.replaceFirst(
-                        todoPattern,
-                        "\$1${newTodoVersion}"
-                    )
-
-                    writeFile(
-                        file: versionFile,
-                        text: versionContent
-                    )
-
-                    echo "${module}: ${oldModuleVersion} -> ${newModuleVersion}"
-                    echo "todo-app: ${oldTodoVersion} -> ${newTodoVersion}"
+                        echo "Updated versions:"
+                        yq '.versions' version.yaml
+                    '''
                 }
             }
         }
@@ -130,7 +103,7 @@ pipeline {
 
                         git commit -m "chore: update ${MODULE} version"
 
-                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:${TARGET_BRANCH}
+                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:devops
                     '''
                 }
             }
