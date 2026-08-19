@@ -20,7 +20,15 @@ RUN apt-get update && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
+# Install yq
+RUN curl -L \
+        https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 \
+        -o /usr/local/bin/yq && \
+    chmod +x /usr/local/bin/yq && \
+    yq --version
+
 ARG DOCKER_GID=999
+
 RUN groupadd -g ${DOCKER_GID} docker || groupmod -g ${DOCKER_GID} docker && \
     usermod -aG docker jenkins
 
