@@ -10,17 +10,28 @@ pipeline {
         stage('Identify Module') {
             steps {
                 script {
-                    echo "Target branch: ${env.TARGET_BRANCH}"
+                    def payload = readJSON text: env.RAW_PAYLOAD
 
-                    if (env.TARGET_BRANCH == 'backend-module') {
-                        env.MODULE = 'backend-module'
+                    def action = payload.action
+                    def merged = payload.pull_request.merged
+                    def targetBranch = payload.pull_request.base.ref
+
+                    echo "PR action: ${action}"
+                    echo "PR merged: ${merged}"
+                    echo "Target branch: ${targetBranch}"
+
+                    if (action != 'closed' || merged != true) {
+                        error "PR was closed but not merged."
                     }
-                    else if (env.TARGET_BRANCH == 'frontend-module') {
-                        env.MODULE = 'frontend-module'
+
+                    if (
+                        targetBranch != 'backend-module' &&
+                        targetBranch != 'frontend-module'
+                    ) {
+                        error "Unsupported target branch: ${targetBranch}"
                     }
-                    else {
-                        error "Unsupported target branch: ${env.TARGET_BRANCH}"
-                    }
+
+                    env.MODULE = targetBranch
 
                     echo "Selected module: ${env.MODULE}"
                 }
