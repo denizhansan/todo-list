@@ -74,4 +74,4 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
-# Versiyonlama full test-2
+# Versiyonlama full test-3
