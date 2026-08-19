@@ -7,38 +7,19 @@ pipeline {
 
     stages {
 
-        stage('Validate Trigger') {
-            steps {
-                script {
-                    echo "GIT_BRANCH: ${env.GIT_BRANCH}"
-
-                    if (
-                        env.GIT_BRANCH != 'origin/backend-module' &&
-                        env.GIT_BRANCH != 'origin/frontend-module'
-                    ) {
-                        echo "Ignoring branch: ${env.GIT_BRANCH}"
-                        echo "Version updater only runs for backend-module or frontend-module."
-
-                        currentBuild.result = 'NOT_BUILT'
-                        error(
-                            "Skipping Version Updater. " +
-                            "Unsupported trigger branch: ${env.GIT_BRANCH}"
-                        )
-                    }
-
-                    echo "Valid trigger branch: ${env.GIT_BRANCH}"
-                }
-            }
-        }
-
         stage('Identify Module') {
             steps {
                 script {
-                    if (env.GIT_BRANCH == 'origin/backend-module') {
+                    echo "Target branch: ${env.TARGET_BRANCH}"
+
+                    if (env.TARGET_BRANCH == 'backend-module') {
                         env.MODULE = 'backend-module'
                     }
-                    else if (env.GIT_BRANCH == 'origin/frontend-module') {
+                    else if (env.TARGET_BRANCH == 'frontend-module') {
                         env.MODULE = 'frontend-module'
+                    }
+                    else {
+                        error "Unsupported target branch: ${env.TARGET_BRANCH}"
                     }
 
                     echo "Selected module: ${env.MODULE}"
@@ -62,10 +43,8 @@ pipeline {
         stage('Update Version') {
             steps {
                 script {
-                    def versionFile = 'version.yaml'
-
-                    if (!fileExists(versionFile)) {
-                        error "version.yaml not found in devops branch!"
+                    if (!fileExists('version.yaml')) {
+                        error 'version.yaml not found in devops branch!'
                     }
 
                     sh '''
