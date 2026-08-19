@@ -39,12 +39,6 @@ pipeline {
 
                     def moduleBuild = build(
                         job: env.MODULE_JOB,
-                        parameters: [
-                            string(
-                                name: 'PR_NUMBER',
-                                value: env.CHANGE_ID
-                            )
-                        ],
                         wait: true,
                         propagate: false
                     )
@@ -60,6 +54,44 @@ pipeline {
                     }
 
                     echo "${env.MODULE_JOB} pipeline completed successfully."
+                }
+            }
+        }
+
+        stage('Check & Run Version Updater') {
+            steps {
+                script {
+
+                    echo "Checking PR status before calling Version Updater..."
+
+                    // Buradaki kontrolü daha sonra gerçek GitHub
+                    // approval kontrolümüz ile değiştirebiliriz.
+                    if (env.CHANGE_ID) {
+
+                        echo "PR #${env.CHANGE_ID} is eligible."
+                        echo "Starting Version Updater..."
+
+                        def versionBuild = build(
+                            job: 'version-updater',
+                            wait: true,
+                            propagate: false
+                        )
+
+                        echo "Version Updater build #${versionBuild.number}"
+                        echo "Version Updater result: ${versionBuild.result}"
+
+                        if (versionBuild.result != 'SUCCESS') {
+                            error(
+                                "Version Updater failed. " +
+                                "Version update was not completed successfully."
+                            )
+                        }
+
+                        echo "Version Updater completed successfully."
+                    }
+                    else {
+                        echo "No PR detected. Version Updater will not run."
+                    }
                 }
             }
         }
