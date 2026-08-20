@@ -64,44 +64,6 @@ pipeline {
                 }
             }
         }
-
-        stage('Check Version Updater') {
-            steps {
-                script {
-
-                    echo "Waiting for PR #${env.CHANGE_ID} to be merged..."
-
-                    timeout(time: 30, unit: 'MINUTES') {
-
-                        waitUntil {
-                            def merged = sh(
-                                script: """
-                                    curl -s \
-                                    -H "Authorization: Bearer \$GITHUB_TOKEN" \
-                                    -H "Accept: application/vnd.github+json" \
-                                    https://api.github.com/repos/denizhansan/todo-list/pulls/${env.CHANGE_ID} \
-                                    | grep -q '"merged": true'
-                                """,
-                                returnStatus: true
-                            ) == 0
-
-                            if (merged) {
-                                echo "PR #${env.CHANGE_ID} has been merged."
-                                return true
-                            }
-
-                            echo "PR #${env.CHANGE_ID} is not merged yet. Waiting..."
-                            sleep(time: 30, unit: 'SECONDS')
-
-                            return false
-                        }
-                    }
-
-                    echo "PR has been merged."
-                    echo "Version Updater should now be running."
-                }
-            }
-        }
     }
 
     post {
