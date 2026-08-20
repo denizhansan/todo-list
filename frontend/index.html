@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>To-Do List</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <div class="app">
+    <header class="app-header">
+      <h1>📝 To-Do List</h1>
+      <p class="subtitle">Stay organized, stay productive.</p>
+    </header>
+
+    <!-- Task creation form -->
+    <section class="task-form-section">
+      <form id="task-form" class="task-form">
+        <input
+          type="text"
+          id="title-input"
+          placeholder="Task title..."
+          maxlength="200"
+          required
+        />
+        <textarea
+          id="description-input"
+          placeholder="Description (optional)"
+          maxlength="2000"
+          rows="2"
+        ></textarea>
+        <button type="submit" id="submit-btn" class="btn btn-primary">
+          Add Task
+        </button>
+        <button type="button" id="cancel-edit-btn" class="btn btn-secondary hidden">
+          Cancel
+        </button>
+      </form>
+    </section>
+
+    <!-- Controls: search, filter, sort -->
+    <section class="controls">
+      <input
+        type="text"
+        id="search-input"
+        class="search-input"
+        placeholder="🔍 Search tasks by title..."
+      />
+
+      <div class="filter-buttons">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="active">Active</button>
+        <button class="filter-btn" data-filter="completed">Completed</button>
+      </div>
+
+      <button id="sort-btn" class="btn btn-outline">
+        Sort: Newest First
+      </button>
+    </section>
+
+    <!-- Loading indicator -->
+    <div id="loading-indicator" class="loading-indicator hidden">
+      <div class="spinner"></div>
+      <span>Loading tasks...</span>
+    </div>
+
+    <!-- Task list -->
+    <section class="task-list-section">
+      <ul id="task-list" class="task-list"></ul>
+      <p id="empty-state" class="empty-state hidden">No tasks found.</p>
+    </section>
+  </div>
+
+  <!-- Toast notifications -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- Delete confirmation modal -->
+  <div id="confirm-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <h3>Delete Task?</h3>
+      <p>This action cannot be undone. Are you sure you want to delete this task?</p>
+      <div class="modal-actions">
+        <button id="confirm-cancel-btn" class="btn btn-secondary">Cancel</button>
+        <button id="confirm-delete-btn" class="btn btn-danger">Delete</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
