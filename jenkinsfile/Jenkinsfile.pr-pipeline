@@ -54,6 +54,16 @@ pipeline {
                     echo "Module build result: ${moduleBuild.result}"
 
                     if (moduleBuild.result != 'SUCCESS') {
+
+                        publishChecks(
+                            name: 'Module Pipeline',
+                            title: 'Module Pipeline Failed',
+                            summary: "${env.MODULE_JOB} pipeline failed. PR cannot be merged.",
+                            text: "Module build #${moduleBuild.number} finished with result: ${moduleBuild.result}",
+                            status: 'COMPLETED',
+                            conclusion: 'FAILURE'
+                        )
+
                         error(
                             "${env.MODULE_JOB} pipeline failed. " +
                             "PR cannot be merged."
@@ -61,60 +71,38 @@ pipeline {
                     }
 
                     echo "${env.MODULE_JOB} pipeline completed successfully."
-                }
-            }
-        }
-
-        stage('Check PR Merge Status') {
-            steps {
-                script {
 
                     /*
-                     * Burada PR'ın merge durumunu kontrol edeceğiz.
+                     * GitHub'a ayrı bir check gönderiyoruz.
                      *
-                     * Şimdilik PR build'i olduğu için CHANGE_ID'nin
-                     * mevcut olup olmadığını kontrol ediyoruz.
-                     *
-                     * Gerçek merged kontrolü daha sonra GitHub API
-                     * üzerinden yapılabilir.
+                     * Bu check SUCCESS olduğunda GitHub Ruleset'te
+                     * required check olarak kullanılabilir.
                      */
+                    publishChecks(
+                        name: 'Module Pipeline',
+                        title: 'Module Pipeline Passed',
+                        summary: "${env.MODULE_JOB} pipeline completed successfully.",
+                        text: "Module build #${moduleBuild.number} completed successfully.",
+                        status: 'COMPLETED',
+                        conclusion: 'SUCCESS'
+                    )
 
-                    if (env.CHANGE_ID) {
-                        env.CHECK_VERSION_UPDATER = 'true'
-
-                        echo "PR #${env.CHANGE_ID} detected."
-                        echo "Version Updater check will run."
-                    }
-                    else {
-                        env.CHECK_VERSION_UPDATER = 'false'
-
-                        echo "No PR detected."
-                        echo "Version Updater check will be skipped."
-                    }
+                    echo "GitHub Check 'Module Pipeline' published successfully."
                 }
             }
         }
 
         stage('Check Version Updater') {
-
-            when {
-                environment name: 'CHECK_VERSION_UPDATER', value: 'true'
-            }
-
             steps {
                 script {
-
-                    echo "Checking Version Updater result..."
-                    echo "PR #${env.CHANGE_ID}"
+                    echo "Check Version Updater stage reached."
 
                     /*
-                     * Version Updater burada ÇALIŞTIRILMIYOR.
+                     * Version Updater burada henüz çalıştırılmıyor.
                      *
-                     * Burada sadece daha önce çalışmış olan
-                     * Version Updater sonucunu kontrol edeceğiz.
+                     * Daha sonra burada Version Updater sonucunu
+                     * gösterecek mekanizmayı ekleyeceğiz.
                      */
-
-                    echo "Version Updater check is enabled."
                 }
             }
         }
@@ -124,12 +112,12 @@ pipeline {
 
         success {
             echo "PR checks SUCCESS."
-            echo "You can now merge this Pull Request from GitHub."
+            echo "Module Pipeline check has passed."
         }
 
         failure {
             echo "PR checks FAILED."
-            echo "Pull Request should not be merged."
+            echo "Module Pipeline check has failed."
         }
 
         aborted {
