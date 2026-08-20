@@ -70,43 +70,29 @@ pipeline {
                 script {
                     echo "Checking Version Updater result for PR #${env.CHANGE_ID}..."
 
-                    def versionJob = Jenkins.instance.getItemByFullName('version-updater')
+                    def response = sh(
+                        script: """
+                            curl -s \
+                            -u "\${JENKINS_USER}:\${JENKINS_API_TOKEN}" \
+                            "\${JENKINS_URL}/job/version-updater/lastBuild/api/json"
+                        """,
+                        returnStdout: true
+                    ).trim()
 
-                    if (versionJob == null) {
-                        error("Version Updater job not found.")
-                    }
+                    def versionBuild = readJSON text: response
 
-                    def matchingBuild = versionJob.builds.find { build ->
-                        def paramsAction = build.getAction(hudson.model.ParametersAction)
+                    echo "Version Updater build #${versionBuild.number}"
+                    echo "Version Updater result: ${versionBuild.result}"
 
-                        if (paramsAction == null) {
-                            return false
-                        }
-
-                        def prParam = paramsAction.getParameter('PR_NUMBER')
-
-                        return prParam != null &&
-                            prParam.value.toString() == env.CHANGE_ID
-                    }
-
-                    if (matchingBuild == null) {
+                    if (versionBuild.result != 'SUCCESS') {
                         error(
-                            "No Version Updater build found for PR #${env.CHANGE_ID}."
-                        )
-                    }
-
-                    echo "Version Updater build #${matchingBuild.number}"
-                    echo "Version Updater result: ${matchingBuild.result}"
-
-                    if (matchingBuild.result != hudson.model.Result.SUCCESS) {
-                        error(
-                            "Version Updater did not complete successfully. " +
-                            "Build #${matchingBuild.number} result: ${matchingBuild.result}"
+                            "Version Updater has not completed successfully. " +
+                            "Current result: ${versionBuild.result}"
                         )
                     }
 
                     echo "Version Updater completed successfully."
-                    echo "Version Updater build #${matchingBuild.number} is SUCCESS."
+                    echo "Version Updater build #${versionBuild.number} is SUCCESS."
                 }
             }
         }
