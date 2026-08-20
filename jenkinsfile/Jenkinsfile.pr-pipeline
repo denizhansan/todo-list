@@ -69,25 +69,19 @@ pipeline {
                             "PR cannot be merged."
                         )
                     }
+                    else {
 
-                    echo "${env.MODULE_JOB} pipeline completed successfully."
+                        publishChecks(
+                            name: 'Module Pipeline',
+                            title: 'Module Pipeline Passed',
+                            summary: "${env.MODULE_JOB} pipeline completed successfully.",
+                            text: "Module build #${moduleBuild.number} completed successfully.",
+                            status: 'COMPLETED',
+                            conclusion: 'SUCCESS'
+                        )
 
-                    /*
-                     * GitHub'a ayrı bir check gönderiyoruz.
-                     *
-                     * Bu check SUCCESS olduğunda GitHub Ruleset'te
-                     * required check olarak kullanılabilir.
-                     */
-                    publishChecks(
-                        name: 'Module Pipeline',
-                        title: 'Module Pipeline Passed',
-                        summary: "${env.MODULE_JOB} pipeline completed successfully.",
-                        text: "Module build #${moduleBuild.number} completed successfully.",
-                        status: 'COMPLETED',
-                        conclusion: 'SUCCESS'
-                    )
-
-                    echo "GitHub Check 'Module Pipeline' published successfully."
+                        echo "GitHub Check 'Module Pipeline' published successfully."
+                    }
                 }
             }
         }
@@ -98,11 +92,13 @@ pipeline {
                     echo "Check Version Updater stage reached."
 
                     /*
-                     * Version Updater burada henüz çalıştırılmıyor.
+                     * Version Updater burada çalıştırılmıyor.
                      *
-                     * Daha sonra burada Version Updater sonucunu
-                     * gösterecek mekanizmayı ekleyeceğiz.
+                     * PR merge edildikten sonra Version Updater'ın
+                     * sonucunu burada gösterecek mekanizma eklenecek.
                      */
+
+                    echo "Waiting for Version Updater result..."
                 }
             }
         }
