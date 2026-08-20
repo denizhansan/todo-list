@@ -68,31 +68,37 @@ pipeline {
         stage('Check Version Updater') {
             steps {
                 script {
-                    echo "Checking Version Updater result for PR #${env.CHANGE_ID}..."
 
-                    def response = sh(
-                        script: """
-                            curl -s \
-                            -u "\${JENKINS_USER}:\${JENKINS_API_TOKEN}" \
-                            "\${JENKINS_URL}/job/version-updater/lastBuild/api/json"
-                        """,
-                        returnStdout: true
-                    ).trim()
+                    echo "Waiting for PR #${env.CHANGE_ID} to be merged..."
 
-                    def versionBuild = readJSON text: response
+                    timeout(time: 30, unit: 'MINUTES') {
 
-                    echo "Version Updater build #${versionBuild.number}"
-                    echo "Version Updater result: ${versionBuild.result}"
+                        waitUntil {
+                            def merged = sh(
+                                script: """
+                                    curl -s \
+                                    -H "Authorization: Bearer \$GITHUB_TOKEN" \
+                                    -H "Accept: application/vnd.github+json" \
+                                    https://api.github.com/repos/YOUR_USERNAME/YOUR_REPOSITORY/pulls/${env.CHANGE_ID} \
+                                    | grep -q '"merged": true'
+                                """,
+                                returnStatus: true
+                            ) == 0
 
-                    if (versionBuild.result != 'SUCCESS') {
-                        error(
-                            "Version Updater has not completed successfully. " +
-                            "Current result: ${versionBuild.result}"
-                        )
+                            if (merged) {
+                                echo "PR #${env.CHANGE_ID} has been merged."
+                                return true
+                            }
+
+                            echo "PR #${env.CHANGE_ID} is not merged yet. Waiting..."
+                            sleep(time: 30, unit: 'SECONDS')
+
+                            return false
+                        }
                     }
 
-                    echo "Version Updater completed successfully."
-                    echo "Version Updater build #${versionBuild.number} is SUCCESS."
+                    echo "PR has been merged."
+                    echo "Version Updater should now be running."
                 }
             }
         }
