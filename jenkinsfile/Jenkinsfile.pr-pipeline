@@ -36,6 +36,7 @@ pipeline {
             steps {
                 script {
                     echo "Starting ${env.MODULE_JOB} pipeline..."
+                    echo "Passing PR_NUMBER: ${env.CHANGE_ID}"
 
                     def moduleBuild = build(
                         job: env.MODULE_JOB,
