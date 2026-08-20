@@ -64,6 +64,60 @@ pipeline {
                 }
             }
         }
+
+        stage('Check PR Merge Status') {
+            steps {
+                script {
+
+                    /*
+                     * Burada PR'ın merge durumunu kontrol edeceğiz.
+                     *
+                     * Şimdilik PR build'i olduğu için CHANGE_ID'nin
+                     * mevcut olup olmadığını kontrol ediyoruz.
+                     *
+                     * Gerçek merged kontrolü daha sonra GitHub API
+                     * üzerinden yapılabilir.
+                     */
+
+                    if (env.CHANGE_ID) {
+                        env.CHECK_VERSION_UPDATER = 'true'
+
+                        echo "PR #${env.CHANGE_ID} detected."
+                        echo "Version Updater check will run."
+                    }
+                    else {
+                        env.CHECK_VERSION_UPDATER = 'false'
+
+                        echo "No PR detected."
+                        echo "Version Updater check will be skipped."
+                    }
+                }
+            }
+        }
+
+        stage('Check Version Updater') {
+
+            when {
+                environment name: 'CHECK_VERSION_UPDATER', value: 'true'
+            }
+
+            steps {
+                script {
+
+                    echo "Checking Version Updater result..."
+                    echo "PR #${env.CHANGE_ID}"
+
+                    /*
+                     * Version Updater burada ÇALIŞTIRILMIYOR.
+                     *
+                     * Burada sadece daha önce çalışmış olan
+                     * Version Updater sonucunu kontrol edeceğiz.
+                     */
+
+                    echo "Version Updater check is enabled."
+                }
+            }
+        }
     }
 
     post {
