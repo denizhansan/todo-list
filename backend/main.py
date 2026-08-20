@@ -74,4 +74,8 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
+<<<<<<< HEAD
 # test commit.
+=======
+# deneme
+>>>>>>> backend-module
