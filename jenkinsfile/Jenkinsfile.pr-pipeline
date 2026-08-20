@@ -1,0 +1,89 @@
+pipeline {
+    agent {
+        node {
+            label 'todo-jenkins-agent'
+        }
+    }
+
+    stages {
+
+        stage('Identify Target Module') {
+            steps {
+                script {
+                    echo "PR ID          : ${env.CHANGE_ID}"
+                    echo "Source Branch  : ${env.CHANGE_BRANCH}"
+                    echo "Target Branch  : ${env.CHANGE_TARGET}"
+
+                    if (env.CHANGE_TARGET == 'backend-module') {
+                        env.MODULE_JOB = 'backend-module'
+                    }
+                    else if (env.CHANGE_TARGET == 'frontend-module') {
+                        env.MODULE_JOB = 'frontend-module'
+                    }
+                    else {
+                        error(
+                            "Unsupported target branch: ${env.CHANGE_TARGET}. " +
+                            "PR must target backend-module or frontend-module."
+                        )
+                    }
+
+                    echo "Selected Module Job: ${env.MODULE_JOB}"
+                }
+            }
+        }
+
+        stage('Run Module Pipeline') {
+            steps {
+                script {
+                    echo "Starting ${env.MODULE_JOB} pipeline..."
+                    echo "Passing PR_NUMBER: ${env.CHANGE_ID}"
+
+                    def moduleBuild = build(
+                        job: env.MODULE_JOB,
+                        parameters: [
+                            string(
+                                name: 'PR_NUMBER',
+                                value: env.CHANGE_ID
+                            )
+                        ],
+                        wait: true,
+                        propagate: false
+                    )
+
+                    echo "Module build #${moduleBuild.number}"
+                    echo "Module build result: ${moduleBuild.result}"
+
+                    if (moduleBuild.result != 'SUCCESS') {
+                        error(
+                            "${env.MODULE_JOB} pipeline failed. " +
+                            "PR cannot be merged."
+                        )
+                    }
+
+                    echo "${env.MODULE_JOB} pipeline completed successfully."
+                }
+            }
+        }
+    }
+
+    post {
+
+        success {
+            echo "PR checks SUCCESS."
+            echo "You can now merge this Pull Request from GitHub."
+        }
+
+        failure {
+            echo "PR checks FAILED."
+            echo "Pull Request should not be merged."
+        }
+
+        aborted {
+            echo "PR checks ABORTED."
+        }
+
+        always {
+            cleanWs()
+        }
+    }
+}
