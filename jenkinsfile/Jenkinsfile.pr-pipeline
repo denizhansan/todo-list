@@ -35,36 +35,32 @@ pipeline {
         stage('Run Module Pipeline') {
             steps {
                 script {
-                    withChecks(
-                        name: 'PR Pipeline',
-                        includeStage: true
-                    ) {
-                        echo "Starting ${env.MODULE_JOB} pipeline..."
+                    echo "Starting ${env.MODULE_JOB} pipeline..."
+                    echo "Passing PR_NUMBER: ${env.CHANGE_ID}"
 
-                        def moduleBuild = build(
-                            job: env.MODULE_JOB,
-                            parameters: [
-                                string(
-                                    name: 'PR_NUMBER',
-                                    value: env.CHANGE_ID
-                                )
-                            ],
-                            wait: true,
-                            propagate: false
-                        )
-
-                        echo "Module build #${moduleBuild.number}"
-                        echo "Module build result: ${moduleBuild.result}"
-
-                        if (moduleBuild.result != 'SUCCESS') {
-                            error(
-                                "${env.MODULE_JOB} pipeline failed. " +
-                                "PR cannot be merged."
+                    def moduleBuild = build(
+                        job: env.MODULE_JOB,
+                        parameters: [
+                            string(
+                                name: 'PR_NUMBER',
+                                value: env.CHANGE_ID
                             )
-                        }
+                        ],
+                        wait: true,
+                        propagate: false
+                    )
 
-                        echo "${env.MODULE_JOB} pipeline completed successfully."
+                    echo "Module build #${moduleBuild.number}"
+                    echo "Module build result: ${moduleBuild.result}"
+
+                    if (moduleBuild.result != 'SUCCESS') {
+                        error(
+                            "${env.MODULE_JOB} pipeline failed. " +
+                            "PR cannot be merged."
+                        )
                     }
+
+                    echo "${env.MODULE_JOB} pipeline completed successfully."
                 }
             }
         }
