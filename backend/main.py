@@ -74,4 +74,12 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
+<<<<<<< HEAD
+<<<<<<< HEAD
+# test commit.
+=======
 # deneme
+>>>>>>> backend-module
+=======
+# denemee
+>>>>>>> backend-module
