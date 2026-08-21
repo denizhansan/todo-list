@@ -76,10 +76,14 @@ def root():
     }
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 # test commit.
 =======
 # deneme
 >>>>>>> backend-module
 =======
 # denemee
+>>>>>>> backend-module
+=======
+# backend merge deneme
 >>>>>>> backend-module
