@@ -7,9 +7,8 @@ pipeline {
 
     parameters {
         string(
-            name: 'SOURCE_BRANCH',
-            defaultValue: 'frontend-module',
-            description: 'Build edilecek branch'
+            name: 'PR_NUMBER',
+            description: 'Pull Request number'
         )
     }
 
@@ -19,12 +18,24 @@ pipeline {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.SOURCE_BRANCH}"]],
+                    branches: [[name: "refs/remotes/origin/pr/${params.PR_NUMBER}/head"]],
                     userRemoteConfigs: [[
                         url: 'https://github.com/denizhansan/todo-list.git',
-                        credentialsId: 'github-credentials'
+                        credentialsId: 'github-creds',
+                        refspec: "+refs/pull/${params.PR_NUMBER}/head:refs/remotes/origin/pr/${params.PR_NUMBER}/head"
                     ]]
                 ])
+            }
+        }
+
+        stage('Read Version') {
+            steps {
+                script {
+                    env.FRONTEND_VERSION = "pr-${params.PR_NUMBER}"
+
+                    echo "PR number: ${params.PR_NUMBER}"
+                    echo "Frontend version: ${env.FRONTEND_VERSION}"
+                }
             }
         }
 
@@ -32,7 +43,9 @@ pipeline {
             steps {
                 dir('frontend') {
                     sh '''
-                        docker build -t denizhansan/todo-frontend:${BUILD_NUMBER} .
+                        docker build \
+                            -t denizhansan/todo-frontend:${FRONTEND_VERSION} \
+                            .
                     '''
                 }
             }
@@ -40,17 +53,18 @@ pipeline {
     }
 
     post {
+
         success {
-            echo 'Frontend module pipeline SUCCESS'
+            echo 'Frontend module pipeline SUCCESS.'
         }
 
         failure {
-            echo 'Frontend module pipeline FAILED'
+            echo 'Frontend module pipeline FAILED.'
         }
 
         always {
             sh '''
-                docker image rm denizhansan/todo-frontend:${BUILD_NUMBER} || true
+                docker image rm denizhansan/todo-frontend:${FRONTEND_VERSION} || true
             '''
 
             cleanWs()
