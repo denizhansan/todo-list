@@ -6,29 +6,77 @@ pipeline {
     }
 
     parameters {
-        choice(
-            name: 'MODULE',
-            choices: [
-                'backend-module',
-                'frontend-module'
-            ],
-            description: 'Module to update'
+        string(
+            name: 'VERSION',
+            defaultValue: '',
+            description: 'Release version used in RELEASE mode. Example: 1.1.0'
         )
 
-        string(
-            name: 'TARGET_BRANCH',
-            defaultValue: 'develop',
-            description: 'Branch where the PR was merged'
+        choice(
+            name: 'MODE',
+            choices: [
+                'MODULE',
+                'RELEASE'
+            ],
+            description: 'MODULE: update version after module merge. RELEASE: set all versions to VERSION.'
         )
     }
 
     stages {
 
-        stage('Checkout') {
+        stage('Identify Module') {
+            steps {
+                script {
+
+                    if (params.MODE == 'RELEASE') {
+
+                        echo '======================================'
+                        echo 'RELEASE MODE'
+                        echo '======================================'
+                        echo "Release development version: ${params.VERSION}"
+
+                        if (!params.VERSION?.trim()) {
+                            error 'VERSION parameter is required in RELEASE mode.'
+                        }
+
+                        env.MODULE = 'RELEASE'
+
+                    } else {
+
+                        def payload = readJSON text: env.RAW_PAYLOAD
+
+                        def action = payload.action
+                        def merged = payload.pull_request.merged
+                        def targetBranch = payload.pull_request.base.ref
+
+                        echo "PR action: ${action}"
+                        echo "PR merged: ${merged}"
+                        echo "Target branch: ${targetBranch}"
+
+                        if (action != 'closed' || merged != true) {
+                            error "PR was closed but not merged."
+                        }
+
+                        if (
+                            targetBranch != 'backend-module' &&
+                            targetBranch != 'frontend-module'
+                        ) {
+                            error "Unsupported target branch: ${targetBranch}"
+                        }
+
+                        env.MODULE = targetBranch
+
+                        echo "Selected module: ${env.MODULE}"
+                    }
+                }
+            }
+        }
+
+        stage('Checkout DevOps Branch') {
             steps {
                 checkout([
                     $class: 'GitSCM',
-                    branches: [[name: "*/${params.TARGET_BRANCH}"]],
+                    branches: [[name: '*/devops']],
                     userRemoteConfigs: [[
                         url: 'https://github.com/denizhansan/todo-list.git',
                         credentialsId: 'github-creds'
@@ -41,74 +89,56 @@ pipeline {
             steps {
                 script {
 
-                    def versionFile = 'version.yaml'
-
-                    if (!fileExists(versionFile)) {
-                        error "version.yaml not found!"
+                    if (!fileExists('version.yaml')) {
+                        error 'version.yaml not found in devops branch!'
                     }
 
-                    echo "Updating module: ${params.MODULE}"
-                    echo "Target branch: ${params.TARGET_BRANCH}"
+                    if (params.MODE == 'RELEASE') {
 
-                    def module = params.MODULE
+                        sh '''
+                            echo "Current versions:"
+                            yq '.versions' version.yaml
 
-                    def versionContent = readFile(versionFile)
+                            echo "Setting all versions to ${VERSION}"
 
-                    def modulePattern = /(?m)^(\s*${module}:\s*)(\d+)\.(\d+)\.(\d+)\s*$/
-                    def todoPattern = /(?m)^(\s*todo-app:\s*)(\d+)\.(\d+)\.(\d+)\s*$/
+                            yq -i '.versions."todo-app" = strenv(VERSION)' version.yaml
+                            yq -i '.versions."backend-module" = strenv(VERSION)' version.yaml
+                            yq -i '.versions."frontend-module" = strenv(VERSION)' version.yaml
 
-                    def moduleMatch = (versionContent =~ modulePattern)
+                            echo "Updated versions:"
+                            yq '.versions' version.yaml
+                        '''
 
-                    if (!moduleMatch.find()) {
-                        error "Version for ${module} not found in ${versionFile}"
+                    } else {
+
+                        sh '''
+                            echo "Current versions:"
+                            yq '.versions' version.yaml
+
+                            MODULE_VERSION=$(yq ".versions.\\"${MODULE}\\"" version.yaml)
+                            TODO_VERSION=$(yq '.versions."todo-app"' version.yaml)
+
+                            echo "Current ${MODULE}: ${MODULE_VERSION}"
+                            echo "Current todo-app: ${TODO_VERSION}"
+
+                            MODULE_MAJOR=$(echo "${MODULE_VERSION}" | cut -d. -f1)
+                            MODULE_MINOR=$(echo "${MODULE_VERSION}" | cut -d. -f2)
+                            MODULE_PATCH=$(echo "${MODULE_VERSION}" | cut -d. -f3)
+
+                            TODO_MAJOR=$(echo "${TODO_VERSION}" | cut -d. -f1)
+                            TODO_MINOR=$(echo "${TODO_VERSION}" | cut -d. -f2)
+                            TODO_PATCH=$(echo "${TODO_VERSION}" | cut -d. -f3)
+
+                            NEW_MODULE_VERSION="${MODULE_MAJOR}.${MODULE_MINOR}.$((MODULE_PATCH + 1))"
+                            NEW_TODO_VERSION="${TODO_MAJOR}.${TODO_MINOR}.$((TODO_PATCH + 1))"
+
+                            yq -i ".versions.\\"${MODULE}\\" = \\"${NEW_MODULE_VERSION}\\"" version.yaml
+                            yq -i '.versions."todo-app" = "'${NEW_TODO_VERSION}'"' version.yaml
+
+                            echo "Updated versions:"
+                            yq '.versions' version.yaml
+                        '''
                     }
-
-                    def todoMatch = (versionContent =~ todoPattern)
-
-                    if (!todoMatch.find()) {
-                        error "Version for todo-app not found in ${versionFile}"
-                    }
-
-                    def moduleMajor = moduleMatch.group(2).toInteger()
-                    def moduleMinor = moduleMatch.group(3).toInteger()
-                    def modulePatch = moduleMatch.group(4).toInteger()
-
-                    def todoMajor = todoMatch.group(2).toInteger()
-                    def todoMinor = todoMatch.group(3).toInteger()
-                    def todoPatch = todoMatch.group(4).toInteger()
-
-                    def oldModuleVersion =
-                        "${moduleMajor}.${moduleMinor}.${modulePatch}"
-
-                    def oldTodoVersion =
-                        "${todoMajor}.${todoMinor}.${todoPatch}"
-
-                    modulePatch++
-                    todoPatch++
-
-                    def newModuleVersion =
-                        "${moduleMajor}.${moduleMinor}.${modulePatch}"
-
-                    def newTodoVersion =
-                        "${todoMajor}.${todoMinor}.${todoPatch}"
-
-                    versionContent = versionContent.replaceFirst(
-                        modulePattern,
-                        "\$1${newModuleVersion}"
-                    )
-
-                    versionContent = versionContent.replaceFirst(
-                        todoPattern,
-                        "\$1${newTodoVersion}"
-                    )
-
-                    writeFile(
-                        file: versionFile,
-                        text: versionContent
-                    )
-
-                    echo "${module}: ${oldModuleVersion} -> ${newModuleVersion}"
-                    echo "todo-app: ${oldTodoVersion} -> ${newTodoVersion}"
                 }
             }
         }
@@ -128,9 +158,13 @@ pipeline {
 
                         git add version.yaml
 
-                        git commit -m "chore: update ${MODULE} version"
+                        if [ "$MODE" = "RELEASE" ]; then
+                            git commit -m "chore: update versions for release ${VERSION}"
+                        else
+                            git commit -m "chore: update ${MODULE} version"
+                        fi
 
-                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:${TARGET_BRANCH}
+                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:devops
                     '''
                 }
             }
@@ -138,7 +172,6 @@ pipeline {
     }
 
     post {
-
         success {
             echo 'Version updater pipeline SUCCESS.'
         }
