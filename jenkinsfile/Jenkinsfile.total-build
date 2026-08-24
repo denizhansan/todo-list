@@ -23,9 +23,6 @@ pipeline {
 
         APP_REPO = 'https://github.com/denizhansan/todo-list.git'
 
-        DEVOPS_REPO = 'https://github.com/denizhansan/devops.git'
-
-
         // =========================================================
         // JENKINS CREDENTIALS
         // =========================================================
@@ -258,67 +255,37 @@ pipeline {
         // =========================================================
 
         stage('Read Current Versions') {
-
             steps {
-
                 script {
+                    sh '''
+                        git fetch origin
+                        git checkout devops
+                        git reset --hard origin/devops
+                    '''
 
-                    dir('devops') {
+                    echo 'Current version.yaml:'
+                    sh 'cat version.yaml'
 
-                        git(
-                            branch: 'develop',
-                            credentialsId:
-                                env.GIT_CREDENTIALS,
-                            url: env.DEVOPS_REPO
-                        )
+                    def versions = readYaml(
+                        file: 'version.yaml'
+                    )
 
+                    env.FRONTEND_VERSION =
+                        versions.frontend.toString()
 
-                        echo 'Current version.yaml:'
+                    env.BACKEND_VERSION =
+                        versions.backend.toString()
 
-                        sh 'cat version.yaml'
+                    env.TODO_VERSION =
+                        versions.'todo-app'.toString()
 
+                    echo '======================================'
+                    echo 'CURRENT DEVELOPMENT VERSIONS'
+                    echo '======================================'
 
-                        def versions = readYaml(
-                            file: 'version.yaml'
-                        )
-
-
-                        env.FRONTEND_VERSION =
-                            versions.frontend.toString()
-
-
-                        env.BACKEND_VERSION =
-                            versions.backend.toString()
-
-
-                        env.TODO_VERSION =
-                            versions.'todo-app'.toString()
-
-
-                        echo '======================================'
-
-                        echo 'CURRENT DEVELOPMENT VERSIONS'
-
-                        echo '======================================'
-
-
-                        echo(
-                            "Todo App : " +
-                            "${env.TODO_VERSION}"
-                        )
-
-
-                        echo(
-                            "Frontend : " +
-                            "${env.FRONTEND_VERSION}"
-                        )
-
-
-                        echo(
-                            "Backend  : " +
-                            "${env.BACKEND_VERSION}"
-                        )
-                    }
+                    echo "Todo App : ${env.TODO_VERSION}"
+                    echo "Frontend : ${env.FRONTEND_VERSION}"
+                    echo "Backend  : ${env.BACKEND_VERSION}"
                 }
             }
         }
