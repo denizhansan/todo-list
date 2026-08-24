@@ -5,35 +5,69 @@ pipeline {
         }
     }
 
+    parameters {
+        string(
+            name: 'VERSION',
+            defaultValue: '',
+            description: 'Release version used in RELEASE mode. Example: 1.1.0'
+        )
+
+        choice(
+            name: 'MODE',
+            choices: [
+                'MODULE',
+                'RELEASE'
+            ],
+            description: 'MODULE: update version after module merge. RELEASE: set all versions to VERSION.'
+        )
+    }
+
     stages {
 
         stage('Identify Module') {
             steps {
                 script {
-                    def payload = readJSON text: env.RAW_PAYLOAD
 
-                    def action = payload.action
-                    def merged = payload.pull_request.merged
-                    def targetBranch = payload.pull_request.base.ref
+                    if (params.MODE == 'RELEASE') {
 
-                    echo "PR action: ${action}"
-                    echo "PR merged: ${merged}"
-                    echo "Target branch: ${targetBranch}"
+                        echo '======================================'
+                        echo 'RELEASE MODE'
+                        echo '======================================'
+                        echo "Release development version: ${params.VERSION}"
 
-                    if (action != 'closed' || merged != true) {
-                        error "PR was closed but not merged."
+                        if (!params.VERSION?.trim()) {
+                            error 'VERSION parameter is required in RELEASE mode.'
+                        }
+
+                        env.MODULE = 'RELEASE'
+
+                    } else {
+
+                        def payload = readJSON text: env.RAW_PAYLOAD
+
+                        def action = payload.action
+                        def merged = payload.pull_request.merged
+                        def targetBranch = payload.pull_request.base.ref
+
+                        echo "PR action: ${action}"
+                        echo "PR merged: ${merged}"
+                        echo "Target branch: ${targetBranch}"
+
+                        if (action != 'closed' || merged != true) {
+                            error "PR was closed but not merged."
+                        }
+
+                        if (
+                            targetBranch != 'backend-module' &&
+                            targetBranch != 'frontend-module'
+                        ) {
+                            error "Unsupported target branch: ${targetBranch}"
+                        }
+
+                        env.MODULE = targetBranch
+
+                        echo "Selected module: ${env.MODULE}"
                     }
-
-                    if (
-                        targetBranch != 'backend-module' &&
-                        targetBranch != 'frontend-module'
-                    ) {
-                        error "Unsupported target branch: ${targetBranch}"
-                    }
-
-                    env.MODULE = targetBranch
-
-                    echo "Selected module: ${env.MODULE}"
                 }
             }
         }
@@ -54,37 +88,57 @@ pipeline {
         stage('Update Version') {
             steps {
                 script {
+
                     if (!fileExists('version.yaml')) {
                         error 'version.yaml not found in devops branch!'
                     }
 
-                    sh '''
-                        echo "Current versions:"
-                        yq '.versions' version.yaml
+                    if (params.MODE == 'RELEASE') {
 
-                        MODULE_VERSION=$(yq ".versions.\\"${MODULE}\\"" version.yaml)
-                        TODO_VERSION=$(yq '.versions."todo-app"' version.yaml)
+                        sh '''
+                            echo "Current versions:"
+                            yq '.versions' version.yaml
 
-                        echo "Current ${MODULE}: ${MODULE_VERSION}"
-                        echo "Current todo-app: ${TODO_VERSION}"
+                            echo "Setting all versions to ${VERSION}"
 
-                        MODULE_MAJOR=$(echo "${MODULE_VERSION}" | cut -d. -f1)
-                        MODULE_MINOR=$(echo "${MODULE_VERSION}" | cut -d. -f2)
-                        MODULE_PATCH=$(echo "${MODULE_VERSION}" | cut -d. -f3)
+                            yq -i '.versions."todo-app" = strenv(VERSION)' version.yaml
+                            yq -i '.versions."backend-module" = strenv(VERSION)' version.yaml
+                            yq -i '.versions."frontend-module" = strenv(VERSION)' version.yaml
 
-                        TODO_MAJOR=$(echo "${TODO_VERSION}" | cut -d. -f1)
-                        TODO_MINOR=$(echo "${TODO_VERSION}" | cut -d. -f2)
-                        TODO_PATCH=$(echo "${TODO_VERSION}" | cut -d. -f3)
+                            echo "Updated versions:"
+                            yq '.versions' version.yaml
+                        '''
 
-                        NEW_MODULE_VERSION="${MODULE_MAJOR}.${MODULE_MINOR}.$((MODULE_PATCH + 1))"
-                        NEW_TODO_VERSION="${TODO_MAJOR}.${TODO_MINOR}.$((TODO_PATCH + 1))"
+                    } else {
 
-                        yq -i ".versions.\\"${MODULE}\\" = \\"${NEW_MODULE_VERSION}\\"" version.yaml
-                        yq -i '.versions."todo-app" = "'${NEW_TODO_VERSION}'"' version.yaml
+                        sh '''
+                            echo "Current versions:"
+                            yq '.versions' version.yaml
 
-                        echo "Updated versions:"
-                        yq '.versions' version.yaml
-                    '''
+                            MODULE_VERSION=$(yq ".versions.\\"${MODULE}\\"" version.yaml)
+                            TODO_VERSION=$(yq '.versions."todo-app"' version.yaml)
+
+                            echo "Current ${MODULE}: ${MODULE_VERSION}"
+                            echo "Current todo-app: ${TODO_VERSION}"
+
+                            MODULE_MAJOR=$(echo "${MODULE_VERSION}" | cut -d. -f1)
+                            MODULE_MINOR=$(echo "${MODULE_VERSION}" | cut -d. -f2)
+                            MODULE_PATCH=$(echo "${MODULE_VERSION}" | cut -d. -f3)
+
+                            TODO_MAJOR=$(echo "${TODO_VERSION}" | cut -d. -f1)
+                            TODO_MINOR=$(echo "${TODO_VERSION}" | cut -d. -f2)
+                            TODO_PATCH=$(echo "${TODO_VERSION}" | cut -d. -f3)
+
+                            NEW_MODULE_VERSION="${MODULE_MAJOR}.${MODULE_MINOR}.$((MODULE_PATCH + 1))"
+                            NEW_TODO_VERSION="${TODO_MAJOR}.${TODO_MINOR}.$((TODO_PATCH + 1))"
+
+                            yq -i ".versions.\\"${MODULE}\\" = \\"${NEW_MODULE_VERSION}\\"" version.yaml
+                            yq -i '.versions."todo-app" = "'${NEW_TODO_VERSION}'"' version.yaml
+
+                            echo "Updated versions:"
+                            yq '.versions' version.yaml
+                        '''
+                    }
                 }
             }
         }
@@ -104,7 +158,11 @@ pipeline {
 
                         git add version.yaml
 
-                        git commit -m "chore: update ${MODULE} version"
+                        if [ "$MODE" = "RELEASE" ]; then
+                            git commit -m "chore: update versions for release ${VERSION}"
+                        else
+                            git commit -m "chore: update ${MODULE} version"
+                        fi
 
                         git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:devops
                     '''
