@@ -474,55 +474,40 @@ pipeline {
         // =========================================================
 
         stage('Version Updater') {
-
             steps {
-
                 script {
 
-                    echo(
-                        "Updating DevOps version.yaml " +
-                        "to ${env.NEXT_VERSION}"
-                    )
+                    echo "Starting ${env.VERSION_UPDATER_JOB}..."
 
-
-                    def updaterResult = build(
-
-                        job: 'version-updater',
-
+                    def result = build(
+                        job: env.VERSION_UPDATER_JOB,
                         parameters: [
-
                             string(
                                 name: 'VERSION',
                                 value: env.NEXT_VERSION
                             ),
-
                             string(
                                 name: 'MODE',
                                 value: 'RELEASE'
                             )
-
                         ],
-
                         wait: true,
-
                         propagate: false
                     )
 
+                    echo(
+                        "${env.VERSION_UPDATER_JOB} finished with " +
+                        "result: ${result.result}"
+                    )
 
-                    if (
-                        updaterResult.result != 'SUCCESS'
-                    ) {
-
+                    if (result.result != 'SUCCESS') {
                         error(
                             'Version Updater failed. ' +
                             'Total Build stopped.'
                         )
                     }
 
-
-                    echo(
-                        'Version Updater completed successfully.'
-                    )
+                    echo 'Version Updater completed successfully.'
                 }
             }
         }
