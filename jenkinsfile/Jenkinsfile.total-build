@@ -266,15 +266,17 @@ pipeline {
                     echo 'Current version.yaml:'
                     sh 'cat version.yaml'
 
-                    def versions = readYaml(
+                    def versionData = readYaml(
                         file: 'version.yaml'
                     )
 
+                    def versions = versionData.versions
+
                     env.FRONTEND_VERSION =
-                        versions.frontend.toString()
+                        versions.'frontend-module'.toString()
 
                     env.BACKEND_VERSION =
-                        versions.backend.toString()
+                        versions.'backend-module'.toString()
 
                     env.TODO_VERSION =
                         versions.'todo-app'.toString()
