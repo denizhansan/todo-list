@@ -614,11 +614,10 @@ pipeline {
                 script {
 
                     withCredentials([
-                        string(
-                            credentialsId:
-                                'github-token',
-                            variable:
-                                'GITHUB_TOKEN'
+                        usernamePassword(
+                            credentialsId: env.GIT_CREDENTIALS,
+                            usernameVariable: 'GIT_USERNAME',
+                            passwordVariable: 'GITHUB_TOKEN'
                         )
                     ]) {
 
