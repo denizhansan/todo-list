@@ -55,7 +55,7 @@ pipeline {
         // SONARQUBE
         // =========================================================
 
-        SONARQUBE_SERVER = 'Sonarqube_todo'
+        SONARQUBE_SERVER = 'SonarQube'
 
         SONAR_SCANNER = 'Sonarqube_todo'
     }
@@ -238,19 +238,12 @@ pipeline {
         // =========================================================
 
         stage('SonarQube Analysis') {
-
             steps {
-
                 script {
-
                     def scannerHome =
                         tool env.SONAR_SCANNER
 
-
-                    withSonarQubeEnv(
-                        env.SONARQUBE_SERVER
-                    ) {
-
+                    withSonarQubeEnv(env.SONARQUBE_SERVER) {
                         sh """
                             ${scannerHome}/bin/sonar-scanner
                         """
