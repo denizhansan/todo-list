@@ -74,4 +74,4 @@ def root():
         "docs": "/docs",
         "health": "/health",
     }
-# backend merge deneme
+# backend merge deneme 2
