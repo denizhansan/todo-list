@@ -378,42 +378,25 @@ pipeline {
         // 9. CREATE RELEASE BRANCH
         // =========================================================
 
-        stage('Create Release Branch') {
+        stage('Create Release Tag') {
             steps {
                 script {
-                    env.RELEASE_BRANCH =
-                        "release/${params.RELEASE_VERSION}"
 
-                    echo(
-                        "Creating release branch: " +
-                        "${env.RELEASE_BRANCH}"
-                    )
+                    sh """
+                        git fetch origin
 
-                    withCredentials([
-                        usernamePassword(
-                            credentialsId: env.GIT_CREDENTIALS,
-                            usernameVariable: 'GIT_USERNAME',
-                            passwordVariable: 'GIT_TOKEN'
-                        )
-                    ]) {
+                        git checkout ${env.RELEASE_BRANCH}
 
-                        sh """
-                            git fetch origin
+                        git pull origin ${env.RELEASE_BRANCH}
 
-                            git checkout develop
+                        git config user.name "Jenkins"
+                        git config user.email "jenkins@localhost"
 
-                            git pull origin develop
+                        git tag -a ${params.RELEASE_VERSION} \
+                            -m "Release ${params.RELEASE_VERSION}"
 
-                            git checkout -b ${env.RELEASE_BRANCH}
-
-                            git push https://\\${GIT_USERNAME}:\\${GIT_TOKEN}@github.com/denizhansan/todo-list.git ${env.RELEASE_BRANCH}
-                        """
-                    }
-
-                    echo(
-                        "Release branch created: " +
-                        "${env.RELEASE_BRANCH}"
-                    )
+                        git push origin ${params.RELEASE_VERSION}
+                    """
                 }
             }
         }
