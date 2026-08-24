@@ -95,19 +95,19 @@ pipeline {
 
                     if (params.MODE == 'RELEASE') {
 
-                        sh '''
+                        echo "Setting all versions to ${params.VERSION}"
+
+                        sh """
                             echo "Current versions:"
                             yq '.versions' version.yaml
 
-                            echo "Setting all versions to ${VERSION}"
-
-                            yq -i '.versions."todo-app" = strenv(VERSION)' version.yaml
-                            yq -i '.versions."backend-module" = strenv(VERSION)' version.yaml
-                            yq -i '.versions."frontend-module" = strenv(VERSION)' version.yaml
+                            yq -i '.versions."todo-app" = "${params.VERSION}"' version.yaml
+                            yq -i '.versions."backend-module" = "${params.VERSION}"' version.yaml
+                            yq -i '.versions."frontend-module" = "${params.VERSION}"' version.yaml
 
                             echo "Updated versions:"
                             yq '.versions' version.yaml
-                        '''
+                        """
 
                     } else {
 
@@ -152,20 +152,30 @@ pipeline {
                         passwordVariable: 'GIT_PASSWORD'
                     )
                 ]) {
-                    sh '''
-                        git config user.name "Jenkins"
-                        git config user.email "jenkins@localhost"
 
-                        git add version.yaml
+                    script {
 
-                        if [ "$MODE" = "RELEASE" ]; then
-                            git commit -m "chore: update versions for release ${VERSION}"
-                        else
-                            git commit -m "chore: update ${MODULE} version"
-                        fi
+                        def commitMessage
 
-                        git push https://${GIT_USERNAME}:${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:devops
-                    '''
+                        if (params.MODE == 'RELEASE') {
+                            commitMessage =
+                                "chore: update versions for release ${params.VERSION}"
+                        } else {
+                            commitMessage =
+                                "chore: update ${env.MODULE} version"
+                        }
+
+                        sh """
+                            git config user.name "Jenkins"
+                            git config user.email "jenkins@localhost"
+
+                            git add version.yaml
+
+                            git commit -m "${commitMessage}"
+
+                            git push https://\\${GIT_USERNAME}:\\${GIT_PASSWORD}@github.com/denizhansan/todo-list.git HEAD:devops
+                        """
+                    }
                 }
             }
         }
