@@ -1,4 +1,5 @@
 pipeline {
+
     agent {
         node {
             label 'todo-jenkins-agent'
@@ -6,41 +7,111 @@ pipeline {
     }
 
     parameters {
+
+        choice(
+            name: 'BUILD_TYPE',
+            choices: [
+                'PR',
+                'TOTAL_BUILD'
+            ],
+            description: 'Pipeline trigger type'
+        )
+
         string(
             name: 'PR_NUMBER',
-            description: 'Pull Request number'
+            defaultValue: '',
+            description: 'Pull Request number. Required only for PR builds.'
         )
     }
+
+
     stages {
 
         stage('Checkout') {
+
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: [[name: "refs/remotes/origin/pr/${params.PR_NUMBER}/head"]],
-                    userRemoteConfigs: [[
-                        url: 'https://github.com/denizhansan/todo-list.git',
-                        credentialsId: 'github-creds',
-                        refspec: "+refs/pull/${params.PR_NUMBER}/head:refs/remotes/origin/pr/${params.PR_NUMBER}/head"
-                    ]]
-                ])
+
+                script {
+
+                    if (params.BUILD_TYPE == 'PR') {
+
+                        echo "Checking out PR #${params.PR_NUMBER}"
+
+                        checkout([
+                            $class: 'GitSCM',
+
+                            branches: [[
+                                name: "refs/remotes/origin/pr/${params.PR_NUMBER}/head"
+                            ]],
+
+                            userRemoteConfigs: [[
+
+                                url: 'https://github.com/denizhansan/todo-list.git',
+
+                                credentialsId: 'github-creds',
+
+                                refspec:
+                                    "+refs/pull/${params.PR_NUMBER}/head:" +
+                                    "refs/remotes/origin/pr/${params.PR_NUMBER}/head"
+                            ]]
+                        ])
+
+                    } else {
+
+                        echo "Checking out develop branch"
+
+                        checkout([
+                            $class: 'GitSCM',
+
+                            branches: [[
+                                name: '*/develop'
+                            ]],
+
+                            userRemoteConfigs: [[
+
+                                url: 'https://github.com/denizhansan/todo-list.git',
+
+                                credentialsId: 'github-creds'
+                            ]]
+                        ])
+                    }
+                }
             }
         }
 
-        stage('Read Version') {
-            steps {
-                script {
-                    env.BACKEND_VERSION = "pr-${params.PR_NUMBER}"
 
-                    echo "PR number: ${params.PR_NUMBER}"
+        stage('Read Version') {
+
+            steps {
+
+                script {
+
+                    if (params.BUILD_TYPE == 'PR') {
+
+                        env.BACKEND_VERSION =
+                            "pr-${params.PR_NUMBER}"
+
+                    } else {
+
+                        env.BACKEND_VERSION =
+                            "total-build"
+                    }
+
+
+                    echo "Build type: ${params.BUILD_TYPE}"
+
                     echo "Backend version: ${env.BACKEND_VERSION}"
                 }
             }
         }
 
+
         stage('Backend Docker Build') {
+
             steps {
+
                 dir('backend') {
+
                     sh '''
                         docker build \
                             -t denizhansan/todo-backend:${BACKEND_VERSION} \
@@ -51,19 +122,27 @@ pipeline {
         }
     }
 
+
     post {
 
         success {
+
             echo 'Backend module pipeline SUCCESS.'
         }
 
+
         failure {
+
             echo 'Backend module pipeline FAILED.'
         }
 
+
         always {
+
             sh '''
-                docker image rm denizhansan/todo-backend:${BACKEND_VERSION} || true
+                docker image rm \
+                denizhansan/todo-backend:${BACKEND_VERSION} \
+                || true
             '''
 
             cleanWs()
