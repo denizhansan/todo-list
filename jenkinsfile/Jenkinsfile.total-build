@@ -149,12 +149,17 @@ pipeline {
                             echo "Starting module job: ${jobName}"
 
 
-                            def result = build(
-                                job: jobName,
-                                wait: true,
-                                propagate: false
-                            )
-
+                        def result = build(
+                            job: jobName,
+                            parameters: [
+                                string(
+                                    name: 'BUILD_TYPE',
+                                    value: 'TOTAL_BUILD'
+                                )
+                            ],
+                            wait: true,
+                            propagate: false
+                        )
 
                             moduleResults[moduleName] = result
 
