@@ -14,7 +14,7 @@ pipeline {
             description: 'Release version. Example: 1.0.0, 1.1.0, 2.0.0'
         )
     }
-
+    
     environment {
 
         // =========================================================
@@ -22,6 +22,7 @@ pipeline {
         // =========================================================
 
         APP_REPO = 'https://github.com/denizhansan/todo-list.git'
+
 
         // =========================================================
         // JENKINS CREDENTIALS
@@ -46,6 +47,8 @@ pipeline {
         FRONTEND_JOB = 'frontend-module'
 
         BACKEND_JOB = 'backend-module'
+
+        VERSION_UPDATER_JOB = 'version-updater'
 
 
         // =========================================================
