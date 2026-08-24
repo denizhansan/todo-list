@@ -376,41 +376,36 @@ pipeline {
         // =========================================================
 
         stage('Create Release Branch') {
-
             steps {
-
                 script {
-
                     env.RELEASE_BRANCH =
                         "release/${params.RELEASE_VERSION}"
-
 
                     echo(
                         "Creating release branch: " +
                         "${env.RELEASE_BRANCH}"
                     )
 
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: env.GIT_CREDENTIALS,
+                            usernameVariable: 'GIT_USERNAME',
+                            passwordVariable: 'GIT_TOKEN'
+                        )
+                    ]) {
 
-                    sh """
+                        sh """
+                            git fetch origin
 
-                        git fetch origin
+                            git checkout develop
 
+                            git pull origin develop
 
-                        git checkout develop
+                            git checkout -b ${env.RELEASE_BRANCH}
 
-
-                        git pull origin develop
-
-
-                        git checkout -b \
-                            ${env.RELEASE_BRANCH}
-
-
-                        git push origin \
-                            ${env.RELEASE_BRANCH}
-
-                    """
-
+                            git push https://\\${GIT_USERNAME}:\\${GIT_TOKEN}@github.com/denizhansan/todo-list.git ${env.RELEASE_BRANCH}
+                        """
+                    }
 
                     echo(
                         "Release branch created: " +
