@@ -7,14 +7,13 @@ pipeline {
     }
 
     parameters {
-
         string(
             name: 'RELEASE_VERSION',
             defaultValue: '1.0.0',
             description: 'Release version. Example: 1.0.0, 1.1.0, 2.0.0'
         )
     }
-    
+
     environment {
 
         // =========================================================
@@ -29,7 +28,6 @@ pipeline {
         // =========================================================
 
         GIT_CREDENTIALS = 'github-creds'
-
         DOCKER_CREDENTIALS = 'dockerhub-creds'
 
 
@@ -45,9 +43,7 @@ pipeline {
         // =========================================================
 
         FRONTEND_JOB = 'frontend-module'
-
         BACKEND_JOB = 'backend-module'
-
         VERSION_UPDATER_JOB = 'version-updater'
 
 
@@ -56,13 +52,11 @@ pipeline {
         // =========================================================
 
         SONARQUBE_SERVER = 'SonarQube'
-
         SONAR_SCANNER = 'Sonarqube_todo'
     }
 
 
     stages {
-
 
         // =========================================================
         // 1. VALIDATE RELEASE VERSION
@@ -129,18 +123,13 @@ pipeline {
                 script {
 
                     def moduleJobs = [
-
                         frontend: env.FRONTEND_JOB,
                         backend : env.BACKEND_JOB
-
                     ]
 
                     def moduleResults = [:]
-
                     def parallelJobs = [:]
 
-
-                    // Run module jobs in parallel
 
                     moduleJobs.each { moduleName, jobName ->
 
@@ -148,21 +137,19 @@ pipeline {
 
                             echo "Starting module job: ${jobName}"
 
-
-                        def result = build(
-                            job: jobName,
-                            parameters: [
-                                string(
-                                    name: 'BUILD_TYPE',
-                                    value: 'TOTAL_BUILD'
-                                )
-                            ],
-                            wait: true,
-                            propagate: false
-                        )
+                            def result = build(
+                                job: jobName,
+                                parameters: [
+                                    string(
+                                        name: 'BUILD_TYPE',
+                                        value: 'TOTAL_BUILD'
+                                    )
+                                ],
+                                wait: true,
+                                propagate: false
+                            )
 
                             moduleResults[moduleName] = result
-
 
                             echo(
                                 "${jobName} finished with " +
@@ -175,12 +162,8 @@ pipeline {
                     parallel parallelJobs
 
 
-                    // Print results
-
                     echo '======================================'
-
                     echo 'MODULE JOB RESULTS'
-
                     echo '======================================'
 
 
@@ -193,8 +176,6 @@ pipeline {
                     }
 
 
-                    // Check failures
-
                     def failedModules = moduleResults.findAll {
                         moduleName, result ->
                             result.result != 'SUCCESS'
@@ -204,9 +185,7 @@ pipeline {
                     if (!failedModules.isEmpty()) {
 
                         echo '======================================'
-
                         echo 'FAILED MODULE JOBS'
-
                         echo '======================================'
 
 
@@ -238,12 +217,16 @@ pipeline {
         // =========================================================
 
         stage('SonarQube Analysis') {
+
             steps {
+
                 script {
+
                     def scannerHome =
                         tool env.SONAR_SCANNER
 
                     withSonarQubeEnv(env.SONARQUBE_SERVER) {
+
                         sh """
                             ${scannerHome}/bin/sonar-scanner
                         """
@@ -254,26 +237,34 @@ pipeline {
 
 
         // =========================================================
-        // 6. READ DEVOPS VERSION.YAML
+        // 5. READ DEVOPS VERSION.YAML
         // =========================================================
 
         stage('Read Current Versions') {
+
             steps {
+
                 script {
+
                     sh '''
                         git fetch origin
                         git checkout devops
                         git reset --hard origin/devops
                     '''
 
+
                     echo 'Current version.yaml:'
+
                     sh 'cat version.yaml'
 
-                    def versionData = readYaml(
-                        file: 'version.yaml'
-                    )
 
-                    def versions = versionData.versions
+                    def versionData =
+                        readYaml(file: 'version.yaml')
+
+
+                    def versions =
+                        versionData.versions
+
 
                     env.FRONTEND_VERSION =
                         versions.'frontend-module'.toString()
@@ -283,6 +274,7 @@ pipeline {
 
                     env.TODO_VERSION =
                         versions.'todo-app'.toString()
+
 
                     echo '======================================'
                     echo 'CURRENT DEVELOPMENT VERSIONS'
@@ -297,7 +289,7 @@ pipeline {
 
 
         // =========================================================
-        // 7. BUILD DOCKER IMAGES
+        // 6. BUILD DOCKER IMAGES
         // =========================================================
 
         stage('Build Docker Images') {
@@ -314,7 +306,6 @@ pipeline {
                             -t ${DOCKER_USERNAME}/todo-frontend:${FRONTEND_VERSION}-dev \
                             ./frontend
 
-
                         docker build \
                             -t ${DOCKER_USERNAME}/todo-backend:${BACKEND_VERSION}-dev \
                             ./backend
@@ -325,7 +316,7 @@ pipeline {
 
 
         // =========================================================
-        // 8. PUSH DOCKER IMAGES
+        // 7. PUSH DOCKER IMAGES
         // =========================================================
 
         stage('Push Docker Images') {
@@ -335,39 +326,30 @@ pipeline {
                 script {
 
                     withCredentials([
-
                         usernamePassword(
                             credentialsId:
                                 env.DOCKER_CREDENTIALS,
-
                             usernameVariable:
                                 'DOCKER_USER',
-
                             passwordVariable:
                                 'DOCKER_PASSWORD'
                         )
-
                     ]) {
 
-                        sh """
-
-                            echo "\$DOCKER_PASSWORD" | \
+                        sh '''
+                            echo "$DOCKER_PASSWORD" | \
                             docker login \
-                            -u "\$DOCKER_USER" \
+                            -u "$DOCKER_USER" \
                             --password-stdin
 
+                            docker push \
+                            denizhansan/todo-frontend:${FRONTEND_VERSION}-dev
 
                             docker push \
-                            ${DOCKER_USERNAME}/todo-frontend:${FRONTEND_VERSION}-dev
-
-
-                            docker push \
-                            ${DOCKER_USERNAME}/todo-backend:${BACKEND_VERSION}-dev
-
+                            denizhansan/todo-backend:${BACKEND_VERSION}-dev
 
                             docker logout
-
-                        """
+                        '''
                     }
                 }
             }
@@ -375,35 +357,63 @@ pipeline {
 
 
         // =========================================================
-        // 9. CREATE RELEASE BRANCH
+        // 8. CREATE RELEASE BRANCH
         // =========================================================
 
-        stage('Create Release Tag') {
+        stage('Create Release Branch') {
+
             steps {
+
                 script {
 
-                    sh """
-                        git fetch origin
+                    env.RELEASE_BRANCH =
+                        "release/${params.RELEASE_VERSION}"
 
-                        git checkout ${env.RELEASE_BRANCH}
 
-                        git pull origin ${env.RELEASE_BRANCH}
+                    echo(
+                        "Creating release branch: " +
+                        "${env.RELEASE_BRANCH}"
+                    )
 
-                        git config user.name "Jenkins"
-                        git config user.email "jenkins@localhost"
 
-                        git tag -a ${params.RELEASE_VERSION} \
-                            -m "Release ${params.RELEASE_VERSION}"
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId:
+                                env.GIT_CREDENTIALS,
+                            usernameVariable:
+                                'GIT_USERNAME',
+                            passwordVariable:
+                                'GIT_PASSWORD'
+                        )
+                    ]) {
 
-                        git push origin ${params.RELEASE_VERSION}
-                    """
+                        sh '''
+                            git fetch origin
+
+                            git checkout develop
+
+                            git pull origin develop
+
+                            git checkout -b "$RELEASE_BRANCH"
+
+                            git push \
+                            https://"$GIT_USERNAME":"$GIT_PASSWORD"@github.com/denizhansan/todo-list.git \
+                            "$RELEASE_BRANCH"
+                        '''
+                    }
+
+
+                    echo(
+                        "Release branch created: " +
+                        "${env.RELEASE_BRANCH}"
+                    )
                 }
             }
         }
 
 
         // =========================================================
-        // 10. CALCULATE NEXT DEVELOPMENT VERSION
+        // 9. CALCULATE NEXT DEVELOPMENT VERSION
         // =========================================================
 
         stage('Calculate Next Version') {
@@ -418,7 +428,6 @@ pipeline {
 
                     int major =
                         versionParts[0].toInteger()
-
 
                     int minor =
                         versionParts[1].toInteger()
@@ -456,52 +465,96 @@ pipeline {
 
 
         // =========================================================
-        // 11. VERSION UPDATER
+        // 10. VERSION UPDATER
         // =========================================================
 
         stage('Version Updater') {
+
             steps {
+
                 script {
 
-                    echo "Starting ${env.VERSION_UPDATER_JOB}..."
-                    echo "VERSION = ${env.NEXT_VERSION}"
-                    echo "MODE = RELEASE"
+                    echo '======================================'
+                    echo 'VERSION UPDATER'
+                    echo '======================================'
 
-                    def result = build(
-                        job: 'version-updater',
-                        parameters: [
-                            string(
-                                name: 'VERSION',
-                                value: env.NEXT_VERSION
-                            ),
-                            string(
-                                name: 'MODE',
-                                value: 'RELEASE'
-                            )
-                        ],
-                        wait: true,
-                        propagate: false
+                    echo(
+                        "Job     : " +
+                        "${env.VERSION_UPDATER_JOB}"
                     )
 
-                    echo "Version Updater build number: ${result.number}"
-                    echo "Version Updater result: ${result.result}"
+                    echo(
+                        "VERSION : " +
+                        "${env.NEXT_VERSION}"
+                    )
 
-                    if (result.result != 'SUCCESS') {
-                        error(
-                            "Version Updater failed. " +
-                            "Build #${result.number}, " +
-                            "Result: ${result.result}"
+                    echo "MODE    : RELEASE"
+
+
+                    try {
+
+                        def result = build(
+                            job: env.VERSION_UPDATER_JOB,
+                            parameters: [
+                                string(
+                                    name: 'VERSION',
+                                    value: env.NEXT_VERSION
+                                ),
+                                string(
+                                    name: 'MODE',
+                                    value: 'RELEASE'
+                                )
+                            ],
+                            wait: true,
+                            propagate: false
                         )
-                    }
 
-                    echo 'Version Updater completed successfully.'
+
+                        echo(
+                            "Version Updater build number: " +
+                            "${result.number}"
+                        )
+
+                        echo(
+                            "Version Updater result: " +
+                            "${result.result}"
+                        )
+
+
+                        if (result.result != 'SUCCESS') {
+
+                            error(
+                                "Version Updater failed. " +
+                                "Build #${result.number}, " +
+                                "Result: ${result.result}"
+                            )
+                        }
+
+
+                        echo(
+                            'Version Updater completed successfully.'
+                        )
+
+                    } catch (Exception e) {
+
+                        echo(
+                            "Version Updater could not be " +
+                            "triggered."
+                        )
+
+                        echo(
+                            "Error: ${e.getMessage()}"
+                        )
+
+                        throw e
+                    }
                 }
             }
         }
 
 
         // =========================================================
-        // 12. CREATE RELEASE TAG
+        // 11. CREATE RELEASE TAG
         // =========================================================
 
         stage('Create Release Tag') {
@@ -510,26 +563,35 @@ pipeline {
 
                 script {
 
-                    sh """
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId:
+                                env.GIT_CREDENTIALS,
+                            usernameVariable:
+                                'GIT_USERNAME',
+                            passwordVariable:
+                                'GIT_PASSWORD'
+                        )
+                    ]) {
 
-                        git checkout \
-                            ${env.RELEASE_BRANCH}
+                        sh '''
+                            git fetch origin
 
+                            git checkout "$RELEASE_BRANCH"
 
-                        git pull origin \
-                            ${env.RELEASE_BRANCH}
+                            git pull origin "$RELEASE_BRANCH"
 
+                            git config user.name "Jenkins CI"
+                            git config user.email "jenkins-ci@todo-app.local"
 
-                        git tag -a \
-                            ${params.RELEASE_VERSION} \
-                            -m \
-                            "Release ${params.RELEASE_VERSION}"
+                            git tag -a "$RELEASE_VERSION" \
+                                -m "Release $RELEASE_VERSION"
 
-
-                        git push origin \
-                            ${params.RELEASE_VERSION}
-
-                    """
+                            git push \
+                                https://"$GIT_USERNAME":"$GIT_PASSWORD"@github.com/denizhansan/todo-list.git \
+                                "$RELEASE_VERSION"
+                        '''
+                    }
 
 
                     echo(
@@ -542,7 +604,7 @@ pipeline {
 
 
         // =========================================================
-        // 13. CREATE GITHUB RELEASE
+        // 12. CREATE GITHUB RELEASE
         // =========================================================
 
         stage('Create GitHub Release') {
@@ -552,30 +614,25 @@ pipeline {
                 script {
 
                     withCredentials([
-
                         string(
                             credentialsId:
                                 'github-token',
-
                             variable:
                                 'GITHUB_TOKEN'
                         )
-
                     ]) {
 
-                        sh """
-
-                            curl -X POST \\
-                            -H "Authorization: Bearer \$GITHUB_TOKEN" \\
-                            -H "Accept: application/vnd.github+json" \\
-                            https://api.github.com/repos/YOUR_USERNAME/todo-app/releases \\
+                        sh '''
+                            curl -X POST \
+                            -H "Authorization: Bearer $GITHUB_TOKEN" \
+                            -H "Accept: application/vnd.github+json" \
+                            https://api.github.com/repos/denizhansan/todo-list/releases \
                             -d '{
-                                "tag_name": "${params.RELEASE_VERSION}",
-                                "name": "Release ${params.RELEASE_VERSION}",
+                                "tag_name": "'"${RELEASE_VERSION}"'",
+                                "name": "Release '"${RELEASE_VERSION}"'",
                                 "generate_release_notes": true
                             }'
-
-                        """
+                        '''
                     }
                 }
             }
