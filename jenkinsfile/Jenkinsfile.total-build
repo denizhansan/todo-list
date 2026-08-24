@@ -85,47 +85,55 @@ pipeline {
 
 
         // =========================================================
-        // 2. CHECKOUT DEVELOP
+        // 2. CHECKOUT & RUN MODULE JOBS
         // =========================================================
 
-        stage('Checkout Develop') {
-
-            steps {
-
-                deleteDir()
-
-                git(
-                    branch: 'develop',
-                    credentialsId: env.GIT_CREDENTIALS,
-                    url: env.APP_REPO
-                )
-
-                sh '''
-                    git fetch origin
-                    git checkout develop
-                    git reset --hard origin/develop
-
-                    echo "Current develop commit:"
-                    git log -1 --oneline
-                '''
-            }
-        }
-
-
-        // =========================================================
-        // 3. RUN MODULE JOBS
-        // =========================================================
-
-        stage('Run Module Jobs') {
+        stage('Checkout & Run Module Jobs') {
 
             steps {
 
                 script {
 
+                    // -------------------------------------------------
+                    // CHECKOUT DEVELOP
+                    // -------------------------------------------------
+
+                    echo '======================================'
+                    echo 'CHECKOUT DEVELOP'
+                    echo '======================================'
+
+                    deleteDir()
+
+                    git(
+                        branch: 'develop',
+                        credentialsId: env.GIT_CREDENTIALS,
+                        url: env.APP_REPO
+                    )
+
+                    sh '''
+                        git fetch origin
+                        git checkout develop
+                        git reset --hard origin/develop
+
+                        echo "Current develop commit:"
+                        git log -1 --oneline
+                    '''
+
+
+                    // -------------------------------------------------
+                    // RUN MODULE JOBS
+                    // -------------------------------------------------
+
+                    echo '======================================'
+                    echo 'RUN MODULE JOBS'
+                    echo '======================================'
+
+
                     def moduleJobs = [
                         frontend: env.FRONTEND_JOB,
                         backend : env.BACKEND_JOB
                     ]
+
 
                     def moduleResults = [:]
                     def parallelJobs = [:]
@@ -136,6 +144,7 @@ pipeline {
                         parallelJobs[moduleName] = {
 
                             echo "Starting module job: ${jobName}"
+
 
                             def result = build(
                                 job: jobName,
@@ -149,7 +158,9 @@ pipeline {
                                 propagate: false
                             )
 
+
                             moduleResults[moduleName] = result
+
 
                             echo(
                                 "${jobName} finished with " +
@@ -167,7 +178,8 @@ pipeline {
                     echo '======================================'
 
 
-                    moduleResults.each { moduleName, result ->
+                    moduleResults.each {
+                        moduleName, result ->
 
                         echo(
                             "${moduleName} -> " +
@@ -213,7 +225,7 @@ pipeline {
 
 
         // =========================================================
-        // 4. SONARQUBE ANALYSIS
+        // 3. SONARQUBE ANALYSIS
         // =========================================================
 
         stage('SonarQube Analysis') {
@@ -224,6 +236,7 @@ pipeline {
 
                     def scannerHome =
                         tool env.SONAR_SCANNER
+
 
                     withSonarQubeEnv(env.SONARQUBE_SERVER) {
 
@@ -237,14 +250,23 @@ pipeline {
 
 
         // =========================================================
-        // 5. READ DEVOPS VERSION.YAML
+        // 4. DOCKER BUILD & PUSH
         // =========================================================
 
-        stage('Read Current Versions') {
+        stage('Docker Build & Push') {
 
             steps {
 
                 script {
+
+                    // -------------------------------------------------
+                    // READ CURRENT VERSIONS
+                    // -------------------------------------------------
+
+                    echo '======================================'
+                    echo 'READ CURRENT VERSIONS'
+                    echo '======================================'
+
 
                     sh '''
                         git fetch origin
@@ -283,47 +305,51 @@ pipeline {
                     echo "Todo App : ${env.TODO_VERSION}"
                     echo "Frontend : ${env.FRONTEND_VERSION}"
                     echo "Backend  : ${env.BACKEND_VERSION}"
-                }
-            }
-        }
 
 
-        // =========================================================
-        // 6. BUILD DOCKER IMAGES
-        // =========================================================
+                    // -------------------------------------------------
+                    // BUILD DOCKER IMAGES
+                    // -------------------------------------------------
 
-        stage('Build Docker Images') {
+                    echo '======================================'
+                    echo 'BUILD DOCKER IMAGES'
+                    echo '======================================'
 
-            steps {
 
-                script {
-
-                    echo 'Building Docker images...'
+                    echo 'Building frontend Docker image...'
 
 
                     sh """
                         docker build \
                             -t ${DOCKER_USERNAME}/todo-frontend:${FRONTEND_VERSION}-dev \
                             ./frontend
+                    """
 
+
+                    echo 'Frontend image built successfully.'
+
+
+                    echo 'Building backend Docker image...'
+
+
+                    sh """
                         docker build \
                             -t ${DOCKER_USERNAME}/todo-backend:${BACKEND_VERSION}-dev \
                             ./backend
                     """
-                }
-            }
-        }
 
 
-        // =========================================================
-        // 7. PUSH DOCKER IMAGES
-        // =========================================================
+                    echo 'Backend image built successfully.'
 
-        stage('Push Docker Images') {
 
-            steps {
+                    // -------------------------------------------------
+                    // PUSH DOCKER IMAGES
+                    // -------------------------------------------------
 
-                script {
+                    echo '======================================'
+                    echo 'PUSH DOCKER IMAGES'
+                    echo '======================================'
+
 
                     withCredentials([
                         usernamePassword(
@@ -342,8 +368,12 @@ pipeline {
                             -u "$DOCKER_USER" \
                             --password-stdin
 
+                            echo "Pushing frontend image..."
+
                             docker push \
                             denizhansan/todo-frontend:${FRONTEND_VERSION}-dev
+
+                            echo "Pushing backend image..."
 
                             docker push \
                             denizhansan/todo-backend:${BACKEND_VERSION}-dev
@@ -351,20 +381,32 @@ pipeline {
                             docker logout
                         '''
                     }
+
+
+                    echo 'Docker Build & Push completed successfully.'
                 }
             }
         }
 
 
         // =========================================================
-        // 8. CREATE RELEASE BRANCH
+        // 5. RELEASE PREPARATION
         // =========================================================
 
-        stage('Create Release Branch') {
+        stage('Release Preparation') {
 
             steps {
 
                 script {
+
+                    // -------------------------------------------------
+                    // CREATE RELEASE BRANCH
+                    // -------------------------------------------------
+
+                    echo '======================================'
+                    echo 'CREATE RELEASE BRANCH'
+                    echo '======================================'
+
 
                     env.RELEASE_BRANCH =
                         "release/${params.RELEASE_VERSION}"
@@ -407,20 +449,16 @@ pipeline {
                         "Release branch created: " +
                         "${env.RELEASE_BRANCH}"
                     )
-                }
-            }
-        }
 
 
-        // =========================================================
-        // 9. CALCULATE NEXT DEVELOPMENT VERSION
-        // =========================================================
+                    // -------------------------------------------------
+                    // CALCULATE NEXT DEVELOPMENT VERSION
+                    // -------------------------------------------------
 
-        stage('Calculate Next Version') {
+                    echo '======================================'
+                    echo 'CALCULATE NEXT DEVELOPMENT VERSION'
+                    echo '======================================'
 
-            steps {
-
-                script {
 
                     def versionParts =
                         params.RELEASE_VERSION.tokenize('.')
@@ -465,7 +503,7 @@ pipeline {
 
 
         // =========================================================
-        // 10. VERSION UPDATER
+        // 6. VERSION UPDATER
         // =========================================================
 
         stage('Version Updater') {
@@ -478,15 +516,18 @@ pipeline {
                     echo 'VERSION UPDATER'
                     echo '======================================'
 
+
                     echo(
                         "Job     : " +
                         "${env.VERSION_UPDATER_JOB}"
                     )
 
+
                     echo(
                         "VERSION : " +
                         "${env.NEXT_VERSION}"
                     )
+
 
                     echo "MODE    : RELEASE"
 
@@ -515,6 +556,7 @@ pipeline {
                             "${result.number}"
                         )
 
+
                         echo(
                             "Version Updater result: " +
                             "${result.result}"
@@ -542,9 +584,11 @@ pipeline {
                             "triggered."
                         )
 
+
                         echo(
                             "Error: ${e.getMessage()}"
                         )
+
 
                         throw e
                     }
@@ -554,14 +598,23 @@ pipeline {
 
 
         // =========================================================
-        // 11. CREATE RELEASE TAG
+        // 7. CREATE TAG & GITHUB RELEASE
         // =========================================================
 
-        stage('Create Release Tag') {
+        stage('Create Tag & GitHub Release') {
 
             steps {
 
                 script {
+
+                    // -------------------------------------------------
+                    // CREATE RELEASE TAG
+                    // -------------------------------------------------
+
+                    echo '======================================'
+                    echo 'CREATE RELEASE TAG'
+                    echo '======================================'
+
 
                     withCredentials([
                         usernamePassword(
@@ -598,26 +651,25 @@ pipeline {
                         "Created tag: " +
                         "${params.RELEASE_VERSION}"
                     )
-                }
-            }
-        }
 
 
-        // =========================================================
-        // 12. CREATE GITHUB RELEASE
-        // =========================================================
+                    // -------------------------------------------------
+                    // CREATE GITHUB RELEASE
+                    // -------------------------------------------------
 
-        stage('Create GitHub Release') {
+                    echo '======================================'
+                    echo 'CREATE GITHUB RELEASE'
+                    echo '======================================'
 
-            steps {
-
-                script {
 
                     withCredentials([
                         usernamePassword(
-                            credentialsId: env.GIT_CREDENTIALS,
-                            usernameVariable: 'GIT_USERNAME',
-                            passwordVariable: 'GITHUB_TOKEN'
+                            credentialsId:
+                                env.GIT_CREDENTIALS,
+                            usernameVariable:
+                                'GIT_USERNAME',
+                            passwordVariable:
+                                'GITHUB_TOKEN'
                         )
                     ]) {
 
@@ -633,6 +685,9 @@ pipeline {
                             }'
                         '''
                     }
+
+
+                    echo 'GitHub Release created successfully.'
                 }
             }
         }
