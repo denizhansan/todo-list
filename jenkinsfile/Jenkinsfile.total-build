@@ -481,9 +481,11 @@ pipeline {
                 script {
 
                     echo "Starting ${env.VERSION_UPDATER_JOB}..."
+                    echo "VERSION = ${env.NEXT_VERSION}"
+                    echo "MODE = RELEASE"
 
                     def result = build(
-                        job: env.VERSION_UPDATER_JOB,
+                        job: 'version-updater',
                         parameters: [
                             string(
                                 name: 'VERSION',
@@ -498,15 +500,14 @@ pipeline {
                         propagate: false
                     )
 
-                    echo(
-                        "${env.VERSION_UPDATER_JOB} finished with " +
-                        "result: ${result.result}"
-                    )
+                    echo "Version Updater build number: ${result.number}"
+                    echo "Version Updater result: ${result.result}"
 
                     if (result.result != 'SUCCESS') {
                         error(
-                            'Version Updater failed. ' +
-                            'Total Build stopped.'
+                            "Version Updater failed. " +
+                            "Build #${result.number}, " +
+                            "Result: ${result.result}"
                         )
                     }
 
