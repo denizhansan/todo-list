@@ -1,0 +1,47 @@
+# Backend uygulaması ayarları
+backend:
+  # Deployment metadata.name
+  deploymentName: backend-deployment
+
+  # Oluşturulacak backend pod sayısı
+  replicaCount: 1
+
+  # Deployment selector ve pod label değeri
+  appLabels: backend
+
+  # Container adı ve uygulamanın dinlediği port
+  containerName: backend
+  containerPort: 8000
+
+  # Backend Docker image bilgileri
+  image:
+    repository: denizhansan/todo-backend
+    tag: v2
+
+  # Backend Kubernetes Service ayarları
+  service:
+    name: backend-service
+
+    # Service'in cluster içindeki portu
+    port: 8000
+
+    # Trafiğin yönlendirileceği container portu
+    targetPort: 8000
+
+    # Cluster dışından erişim için NodePort
+    nodePort: 30800
+
+# Uygulamanın ConfigMap değerleri
+configmap:
+  # ConfigMap metadata.name
+  name: todo-app-config
+
+  # Backend uygulamasının kullanacağı MongoDB database adı
+  databaseName: todo_app
+
+  # MongoDB collection adı
+  collectionName: tasks
+
+  # Backend API'nin dinleyeceği adres ve port
+  apiHost: "0.0.0.0"
+  apiPort: "8000"

@@ -1,0 +1,32 @@
+# Frontend uygulaması ayarları
+frontend:
+  # Deployment metadata.name
+  deploymentName: frontend-deployment
+
+  # Oluşturulacak frontend pod sayısı
+  replicaCount: 1
+
+  # Deployment selector ve pod label değeri
+  appLabels: frontend
+
+  # Container adı ve frontend'in dinlediği port
+  containerName: frontend
+  containerPort: 5500
+
+  # Frontend Docker image bilgileri
+  image:
+    repository: denizhansan/todo-frontend
+    tag: v3
+
+  # Frontend Kubernetes Service ayarları
+  service:
+    name: frontend-service
+
+    # Service'in cluster içindeki portu
+    port: 5500
+
+    # Trafiğin yönlendirileceği container portu
+    targetPort: 5500
+
+    # Cluster dışından erişim için NodePort
+    nodePort: 30550
