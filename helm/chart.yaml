@@ -1,0 +1,18 @@
+# Helm chart API versiyonu
+# Helm 3 chart'larında v2 kullanılır
+apiVersion: v2
+
+# Helm chart'ın adı
+name: todo-app
+
+# Chart'ın kısa açıklaması
+description: Helm chart for Todo App Kubernetes deployment
+
+# Bu chart bir uygulama deploy ettiği için application
+type: application
+
+# Helm chart'ın kendi versiyonu
+version: 0.1.0
+
+# Chart ile deploy edilen uygulamanın versiyonu
+appVersion: "1.1.0"

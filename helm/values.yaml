@@ -1,0 +1,144 @@
+# Uygulamanın Kubernetes namespace'i
+namespace: todo-app
+
+
+# Backend uygulaması ayarları
+backend:
+  # Deployment metadata.name
+  deploymentName: backend-deployment
+
+  # Oluşturulacak backend pod sayısı
+  replicaCount: 1
+
+  # Deployment selector ve pod label değeri
+  appLabels: backend
+
+  # Container adı ve uygulamanın dinlediği port
+  containerName: backend
+  containerPort: 8000
+
+  # Backend Docker image bilgileri
+  image:
+    repository: denizhansan/todo-backend
+    tag: v2
+
+  # Backend Kubernetes Service ayarları
+  service:
+    name: backend-service
+
+    # Service'in cluster içindeki portu
+    port: 8000
+
+    # Trafiğin yönlendirileceği container portu
+    targetPort: 8000
+
+    # Cluster dışından erişim için NodePort
+    nodePort: 30800
+
+
+# Frontend uygulaması ayarları
+frontend:
+  # Deployment metadata.name
+  deploymentName: frontend-deployment
+
+  # Oluşturulacak frontend pod sayısı
+  replicaCount: 1
+
+  # Deployment selector ve pod label değeri
+  appLabels: frontend
+
+  # Container adı ve frontend'in dinlediği port
+  containerName: frontend
+  containerPort: 5500
+
+  # Frontend Docker image bilgileri
+  image:
+    repository: denizhansan/todo-frontend
+    tag: v3
+
+  # Frontend Kubernetes Service ayarları
+  service:
+    name: frontend-service
+
+    # Service'in cluster içindeki portu
+    port: 5500
+
+    # Trafiğin yönlendirileceği container portu
+    targetPort: 5500
+
+    # Cluster dışından erişim için NodePort
+    nodePort: 30550
+
+
+# MongoDB ayarları
+mongodb:
+  # StatefulSet metadata.name
+  statefulsetName: mongodb
+
+  # MongoDB pod sayısı
+  replicaCount: 1
+
+  # StatefulSet selector ve pod label değeri
+  appLabels: mongodb
+
+  # MongoDB container bilgileri
+  containerName: mongodb
+  containerPort: 27017
+
+  # MongoDB image bilgileri
+  image:
+    repository: mongo
+    tag: latest
+
+  # Headless MongoDB Service ayarları
+  service:
+    name: mongodb-service
+    port: 27017
+    targetPort: 27017
+
+  # MongoDB kalıcı disk ayarları
+  storage:
+    # volumeClaimTemplates içerisinde kullanılacak volume adı
+    name: mongodb-storage
+
+    # Volume'un container içerisinde mount edileceği dizin
+    mountPath: /data/db
+
+    # Kubernetes StorageClass
+    storageClass: local-path
+
+    # PVC erişim modu
+    accessMode: ReadWriteOnce
+
+    # MongoDB için ayrılacak disk alanı
+    size: 2Gi
+
+
+# Uygulamanın ConfigMap değerleri
+configmap:
+  # ConfigMap metadata.name
+  name: todo-app-config
+
+  # Backend uygulamasının kullanacağı MongoDB database adı
+  databaseName: todo_app
+
+  # MongoDB collection adı
+  collectionName: tasks
+
+  # Backend API'nin dinleyeceği adres ve port
+  apiHost: "0.0.0.0"
+  apiPort: "8000"
+
+
+# Kubernetes Secret içerisinde tutulacak MongoDB bilgileri
+secret:
+  # Secret metadata.name
+  name: todo-app-secret
+
+  mongodb:
+    # MongoDB root kullanıcı bilgileri
+    username: admin
+    password: password
+
+    # Backend'in MongoDB'ye bağlanmak için kullanacağı connection string
+    uri: "mongodb://admin:password@mongodb-service:27017/todo-app?authSource=admin"
