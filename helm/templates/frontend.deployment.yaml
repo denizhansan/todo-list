@@ -23,5 +23,5 @@ spec:
           image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
 
           ports:
-            - containerPort: {{ .Values.frontend.containerPort | quote }}
+            - containerPort: {{ .Values.frontend.containerPort }}
           

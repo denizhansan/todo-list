@@ -23,7 +23,7 @@ spec:
           image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
 
           ports:
-            - containerPort: {{ .Values.backend.containerPort | quote }}
+            - containerPort: {{ .Values.backend.containerPort }}
 
           env:
             - name: MONGODB_URI
