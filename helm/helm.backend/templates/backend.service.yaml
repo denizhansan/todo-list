@@ -3,7 +3,7 @@ kind: Service
 
 metadata:
   name: {{ .Values.backend.service.name }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.namespace }}
 
 spec:
   type: NodePort

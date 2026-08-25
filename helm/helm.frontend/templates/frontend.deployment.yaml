@@ -3,7 +3,7 @@ kind: Deployment
 
 metadata:
   name: {{ .Values.frontend.deploymentName }}
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.namespace }}
 
 spec:
   replicas: {{ .Values.frontend.replicaCount }}
