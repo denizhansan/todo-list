@@ -12,6 +12,6 @@ spec:
     app: {{ .Values.frontend.appLabels }}
 
   ports:
-    - port: {{ .Values.frontend.service.port | quote }}
-      targetPort: {{ .Values.frontend.containerPort | quote }}
-      nodePort: {{ .Values.frontend.nodePort | quote }}
+  - port: {{ .Values.frontend.service.port | quote }}
+    targetPort: {{ .Values.frontend.service.targetPort | quote }}
+    nodePort: {{ .Values.frontend.service.nodePort | quote }}
