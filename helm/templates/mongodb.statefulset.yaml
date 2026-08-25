@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: StatefulSet
+
+metadata:
+  name: {{ .Values.mongodb.statefulsetName }}
+  namespace: {{ .Values.namespace }}
+
+spec:
+  serviceName: {{ .Values.mongodb.service.name }}
+
+  replicas: {{ .Values.mongodb.replicaCount }}
+
+  selector:
+    matchLabels: 
+      app: {{ .Values.mongodb.appLabels }}
+  
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.mongodb.appLabels }}
+
+    spec:
+      containers:
+        - name: {{ .Values.mongodb.containerName }}
+          image: {{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }}
+
+          ports:
+            - containerPort: {{ .Values.mongodb.containerPort}}
+
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key:  MONGO_INITDB_ROOT_USERNAME
+
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: MONGO_INITDB_ROOT_PASSWORD
+
+          volumeMounts:
+            - name: {{ .Values.mongodb.storage.name }}
+              mountPath: {{ .Values.mongodb.storage.mountPath }}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: {{ .Values.mongodb.storage.name }}
+        
+      spec:
+        storageClassName: {{ .Values.mongodb.storage.storageClass }}
+          
+        accessModes:
+          - {{ .Values.mongodb.storage.accessMode }}
+        resources:
+          requests:
+            storage: {{ .Values.mongodb.storage.size }}

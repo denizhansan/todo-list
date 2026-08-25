@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+
+metadata:
+  name: {{ .Values.backend.deploymentName }}
+  namespace: {{ .Values.namespace }}
+
+spec:
+  replicas: {{ .Values.backend.replicaCount }}
+
+  selector:
+    matchLabels:
+      app: {{ .Values.backend.appLabels }}
+
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.backend.appLabels }}
+
+    spec:
+      containers:
+        - name: {{ .Values.backend.containerName}}
+          image: {{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}
+
+          ports:
+            - containerPort: {{ .Values.backend.containerPort | quote }}
+
+          env:
+            - name: MONGODB_URI
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: MONGODB_URI
