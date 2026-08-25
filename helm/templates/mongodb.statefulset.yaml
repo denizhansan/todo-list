@@ -32,7 +32,7 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: {{ .Values.secret.name }}
-                  key:  MONGO_INITDB_ROOT_USERNAME
+                  key: MONGO_INITDB_ROOT_USERNAME
 
             - name: MONGO_INITDB_ROOT_PASSWORD
               valueFrom:
