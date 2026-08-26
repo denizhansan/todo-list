@@ -3,7 +3,7 @@ kind: Service
 
 metadata:
   name: {{ .Values.mongodb.service.name }}
-  namespace: {{ .Release.namespace }}
+  namespace: {{ .Release.Namespace }}
 
 spec:
   clusterIP: None

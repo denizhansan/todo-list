@@ -3,7 +3,7 @@ kind: ConfigMap
 
 metadata:
   name: {{ .Values.configmap.name }}
-  namespace: {{ .Release.namespace }}
+  namespace: {{ .Release.Namespace }}
 
 data:
   DATABASE_NAME: {{ .Values.configmap.databaseName | quote }}
