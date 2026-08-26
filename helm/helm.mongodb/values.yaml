@@ -29,6 +29,9 @@ mongodb:
     # volumeClaimTemplates içerisinde kullanılacak volume adı
     name: mongodb-storage
 
+    # Volume'un silinip silinmeyeceği
+    keep: true
+
     # Volume'un container içerisinde mount edileceği dizin
     mountPath: /data/db
 

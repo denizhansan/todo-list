@@ -47,7 +47,11 @@ spec:
   volumeClaimTemplates:
     - metadata:
         name: {{ .Values.mongodb.storage.name }}
-        
+        annotations:
+          {{- if .Values.mongodb.storage.keep }}
+          helm.sh/resource-policy: keep
+          {{- end }}
+          
       spec:
         storageClassName: {{ .Values.mongodb.storage.storageClass }}
           
