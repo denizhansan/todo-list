@@ -1,0 +1,25 @@
+helmDefaults:
+  createNamespace: true
+
+releases:
+  - name: mongodb
+    namespace: todo-app
+    chart: ./helm.mongodb
+    values:
+      - ./helm.mongodb/values.yaml
+
+  - name: backend
+    namespace: todo-app
+    chart: ./helm.backend
+    values:
+      - ./helm.backend/values.yaml
+    needs:
+      - todo-app/mongodb
+
+  - name: frontend
+    namespace: todo-app
+    chart: ./helm.frontend
+    values:
+      - ./helm.frontend/values.yaml
+    needs:
+      - todo-app/backend
