@@ -45,3 +45,7 @@ configmap:
   # Backend API'nin dinleyeceği adres ve port
   apiHost: "0.0.0.0"
   apiPort: "8000"
+
+secret:
+  # Secret metadata.name
+  name: todo-app-secret
