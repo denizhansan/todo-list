@@ -321,7 +321,7 @@ pipeline {
 
                     sh """
                         docker build \
-                            -t ${DOCKER_USERNAME}/todo-frontend:${FRONTEND_VERSION}-dev \
+                            -t ${DOCKER_USERNAME}/todo-frontend:${FRONTEND_VERSION} \
                             ./frontend
                     """
 
@@ -334,7 +334,7 @@ pipeline {
 
                     sh """
                         docker build \
-                            -t ${DOCKER_USERNAME}/todo-backend:${BACKEND_VERSION}-dev \
+                            -t ${DOCKER_USERNAME}/todo-backend:${BACKEND_VERSION} \
                             ./backend
                     """
 
@@ -371,12 +371,12 @@ pipeline {
                             echo "Pushing frontend image..."
 
                             docker push \
-                            denizhansan/todo-frontend:${FRONTEND_VERSION}-dev
+                            denizhansan/todo-frontend:${FRONTEND_VERSION}
 
                             echo "Pushing backend image..."
 
                             docker push \
-                            denizhansan/todo-backend:${BACKEND_VERSION}-dev
+                            denizhansan/todo-backend:${BACKEND_VERSION}
 
                             docker logout
                         '''
@@ -717,10 +717,10 @@ pipeline {
                 ${env.RELEASE_BRANCH}
 
             Frontend Docker:
-                ${DOCKER_USERNAME}/todo-frontend:${env.FRONTEND_VERSION}-dev
+                ${DOCKER_USERNAME}/todo-frontend:${env.FRONTEND_VERSION}
 
             Backend Docker:
-                ${DOCKER_USERNAME}/todo-backend:${env.BACKEND_VERSION}-dev
+                ${DOCKER_USERNAME}/todo-backend:${env.BACKEND_VERSION}
 
             ============================================
             """
