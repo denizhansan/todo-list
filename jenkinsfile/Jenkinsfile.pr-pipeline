@@ -11,6 +11,29 @@ pipeline {
         GITHUB_OWNER = 'denizhansan'
         GITHUB_REPO  = 'todo-list'
     }
+    
+        parameters {
+        string(
+            name: 'PR_NUMBER',
+            defaultValue: '',
+            description: 'Pull Request number'
+        )
+
+        string(
+            name: 'SOURCE_BRANCH',
+            defaultValue: '',
+            description: 'Pull Request source branch'
+        )
+
+        choice(
+            name: 'TARGET_BRANCH',
+            choices: [
+                'backend-module',
+                'frontend-module'
+            ],
+            description: 'Pull Request target branch'
+        )
+    }
 
     stages {
 
