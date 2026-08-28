@@ -11,8 +11,8 @@ pipeline {
         GITHUB_OWNER = 'denizhansan'
         GITHUB_REPO  = 'todo-list'
     }
-    
-        parameters {
+
+    parameters {
         string(
             name: 'PR_NUMBER',
             defaultValue: '',
@@ -40,14 +40,23 @@ pipeline {
         stage('Identify Target Module') {
             steps {
                 script {
-                    echo "PR ID          : ${env.CHANGE_ID}"
-                    echo "Source Branch  : ${env.CHANGE_BRANCH}"
-                    echo "Target Branch  : ${env.CHANGE_TARGET}"
 
-                    if (env.CHANGE_TARGET == 'backend-module') {
+                    if (!params.PR_NUMBER?.trim()) {
+                        error 'PR_NUMBER parameter is required.'
+                    }
+
+                    if (!params.SOURCE_BRANCH?.trim()) {
+                        error 'SOURCE_BRANCH parameter is required.'
+                    }
+
+                    echo "PR ID          : ${params.PR_NUMBER}"
+                    echo "Source Branch  : ${params.SOURCE_BRANCH}"
+                    echo "Target Branch  : ${params.TARGET_BRANCH}"
+
+                    if (params.TARGET_BRANCH == 'backend-module') {
                         env.MODULE_JOB = 'backend-module'
                     }
-                    else if (env.CHANGE_TARGET == 'frontend-module') {
+                    else if (params.TARGET_BRANCH == 'frontend-module') {
                         env.MODULE_JOB = 'frontend-module'
                     }
                     else {
@@ -55,13 +64,13 @@ pipeline {
                             name: env.MODULE_CHECK_NAME,
                             title: 'Module Build Check',
                             summary: 'Unsupported PR target branch.',
-                            text: "Target branch: ${env.CHANGE_TARGET}",
+                            text: "Target branch: ${params.TARGET_BRANCH}",
                             status: 'COMPLETED',
                             conclusion: 'FAILURE'
                         )
 
                         error(
-                            "Unsupported target branch: ${env.CHANGE_TARGET}. " +
+                            "Unsupported target branch: ${params.TARGET_BRANCH}. " +
                             "PR must target backend-module or frontend-module."
                         )
                     }
@@ -79,19 +88,19 @@ pipeline {
                         name: env.MODULE_CHECK_NAME,
                         title: 'Module Build Check',
                         summary: "${env.MODULE_JOB} pipeline is running.",
-                        text: "Validating PR #${env.CHANGE_ID}.",
+                        text: "Validating PR #${params.PR_NUMBER}.",
                         status: 'IN_PROGRESS'
                     )
 
                     echo "Starting ${env.MODULE_JOB} pipeline..."
-                    echo "Passing PR_NUMBER: ${env.CHANGE_ID}"
+                    echo "Passing PR_NUMBER: ${params.PR_NUMBER}"
 
                     def moduleBuild = build(
                         job: env.MODULE_JOB,
                         parameters: [
                             string(
                                 name: 'PR_NUMBER',
-                                value: env.CHANGE_ID
+                                value: params.PR_NUMBER
                             )
                         ],
                         wait: true,
@@ -107,7 +116,7 @@ pipeline {
                             name: env.MODULE_CHECK_NAME,
                             title: 'Module Build Check',
                             summary: "${env.MODULE_JOB} pipeline failed.",
-                            text: "PR #${env.CHANGE_ID} cannot be merged.",
+                            text: "PR #${params.PR_NUMBER} cannot be merged.",
                             status: 'COMPLETED',
                             conclusion: 'FAILURE'
                         )
@@ -122,7 +131,7 @@ pipeline {
                         name: env.MODULE_CHECK_NAME,
                         title: 'Module Build Check',
                         summary: "${env.MODULE_JOB} pipeline completed successfully.",
-                        text: "PR #${env.CHANGE_ID} passed module validation.",
+                        text: "PR #${params.PR_NUMBER} passed module validation.",
                         status: 'COMPLETED',
                         conclusion: 'SUCCESS'
                     )
@@ -138,11 +147,11 @@ pipeline {
             steps {
                 script {
 
-                    echo "Waiting for PR #${env.CHANGE_ID} to be merged..."
+                    echo "Waiting for PR #${params.PR_NUMBER} to be merged..."
 
                     timeout(time: 30, unit: 'MINUTES') {
 
-                        waitUntil {
+                        waitUntil(initialRecurrencePeriod: 5000) {
 
                             def prInfo
 
@@ -159,7 +168,7 @@ pipeline {
                                         curl -sS \
                                             -u "\$GITHUB_USERNAME:\$GITHUB_TOKEN" \
                                             -H "Accept: application/vnd.github+json" \
-                                            https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls/${env.CHANGE_ID}
+                                            https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls/${params.PR_NUMBER}
                                     """,
                                     returnStdout: true
                                 ).trim()
@@ -171,13 +180,19 @@ pipeline {
                             echo "PR merged : ${pr.merged}"
 
                             if (pr.merged == true) {
-                                echo "PR #${env.CHANGE_ID} has been merged."
+
+                                echo "PR #${params.PR_NUMBER} has been merged."
+
                                 return true
                             }
 
-                            if (pr.state == 'closed' && pr.merged == false) {
+                            if (
+                                pr.state == 'closed' &&
+                                pr.merged == false
+                            ) {
+
                                 error(
-                                    "PR #${env.CHANGE_ID} was closed without being merged. " +
+                                    "PR #${params.PR_NUMBER} was closed without being merged. " +
                                     "Version Updater will not run."
                                 )
                             }
@@ -194,6 +209,7 @@ pipeline {
         stage('Run Version Updater') {
             steps {
                 script {
+
                     echo "PR was merged successfully."
                     echo "Starting Version-updater..."
                     echo "Module: ${env.MODULE_JOB}"
@@ -232,9 +248,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 script {
-                    // Sonraki adım:
-                    // Yeni version.yaml okunacak
-                    // Backend veya frontend image build edilecek
+                    // Yeni version.yaml okunacak.
+                    // İlgili backend/frontend image build edilecek.
                 }
             }
         }
@@ -242,9 +257,8 @@ pipeline {
         stage('Push Image to Nexus') {
             steps {
                 script {
-                    // Sonraki adım:
-                    // nexus-creds ile login
-                    // todo-nexus:8082 registry'sine push
+                    // nexus-creds ile login.
+                    // Image Nexus registry'ye push edilecek.
                 }
             }
         }
