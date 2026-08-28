@@ -10,6 +10,8 @@ pipeline {
 
         GITHUB_OWNER = 'denizhansan'
         GITHUB_REPO  = 'todo-list'
+
+        NEXUS_REGISTRY = 'todo-nexus:8082'
     }
 
     stages {
@@ -22,12 +24,21 @@ pipeline {
                     echo "Target Branch  : ${env.CHANGE_TARGET}"
 
                     if (env.CHANGE_TARGET == 'backend-module') {
+
                         env.MODULE_JOB = 'backend-module'
+                        env.MODULE_DIR = 'backend'
+                        env.IMAGE_NAME = 'todo-backend'
+
                     }
                     else if (env.CHANGE_TARGET == 'frontend-module') {
+
                         env.MODULE_JOB = 'frontend-module'
+                        env.MODULE_DIR = 'frontend'
+                        env.IMAGE_NAME = 'todo-frontend'
+
                     }
                     else {
+
                         publishChecks(
                             name: env.MODULE_CHECK_NAME,
                             title: 'Module Build Check',
@@ -43,7 +54,12 @@ pipeline {
                         )
                     }
 
-                    echo "Selected Module Job: ${env.MODULE_JOB}"
+                    env.IMAGE_TAG = "pr-${env.CHANGE_ID}"
+
+                    echo "Selected Module Job : ${env.MODULE_JOB}"
+                    echo "Module Directory    : ${env.MODULE_DIR}"
+                    echo "Docker Image        : ${env.IMAGE_NAME}"
+                    echo "Docker Image Tag    : ${env.IMAGE_TAG}"
                 }
             }
         }
@@ -111,6 +127,62 @@ pipeline {
             }
         }
 
+        stage('Build Docker Image') {
+            steps {
+                script {
+
+                    echo "Building Docker image..."
+                    echo "Module   : ${env.MODULE_JOB}"
+                    echo "Directory: ${env.MODULE_DIR}"
+                    echo "Image    : ${env.NEXUS_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+
+                    dir(env.MODULE_DIR) {
+                        sh '''
+                            docker build \
+                                -t ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG} \
+                                .
+                        '''
+                    }
+
+                    echo "Docker image build completed successfully."
+                }
+            }
+        }
+
+        stage('Push Image to Nexus') {
+            steps {
+                script {
+
+                    echo "Pushing image to Nexus..."
+                    echo "Registry : ${env.NEXUS_REGISTRY}"
+                    echo "Image    : ${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+
+                    withCredentials([
+                        usernamePassword(
+                            credentialsId: 'nexus-creds',
+                            usernameVariable: 'NEXUS_USERNAME',
+                            passwordVariable: 'NEXUS_PASSWORD'
+                        )
+                    ]) {
+
+                        sh '''
+                            echo "$NEXUS_PASSWORD" | docker login ${NEXUS_REGISTRY} \
+                                -u "$NEXUS_USERNAME" \
+                                --password-stdin
+
+                            docker push \
+                                ${NEXUS_REGISTRY}/${IMAGE_NAME}:${IMAGE_TAG}
+
+                            docker logout ${NEXUS_REGISTRY}
+                        '''
+                    }
+
+                    echo "Image pushed successfully."
+                    echo "Nexus image: ${env.NEXUS_REGISTRY}/${env.IMAGE_NAME}:${env.IMAGE_TAG}"
+                }
+            }
+        }
+
         stage('Wait for PR Merge') {
             steps {
                 script {
@@ -148,11 +220,17 @@ pipeline {
                             echo "PR merged : ${pr.merged}"
 
                             if (pr.merged == true) {
+
                                 echo "PR #${env.CHANGE_ID} has been merged."
+
                                 return true
                             }
 
-                            if (pr.state == 'closed' && pr.merged == false) {
+                            if (
+                                pr.state == 'closed' &&
+                                pr.merged == false
+                            ) {
+
                                 error(
                                     "PR #${env.CHANGE_ID} was closed without being merged. " +
                                     "Version Updater will not run."
@@ -171,6 +249,7 @@ pipeline {
         stage('Run Version Updater') {
             steps {
                 script {
+
                     echo "PR was merged successfully."
                     echo "Starting Version-updater..."
                     echo "Module: ${env.MODULE_JOB}"
@@ -195,6 +274,7 @@ pipeline {
                     echo "Version Updater result: ${versionBuild.result}"
 
                     if (versionBuild.result != 'SUCCESS') {
+
                         error(
                             "Version Updater failed for ${env.MODULE_JOB}."
                         )
@@ -204,31 +284,13 @@ pipeline {
                 }
             }
         }
-
-        /*
-        stage('Build Docker Image') {
-            steps {
-                script {
-                    // Sonraki adım:
-                    // Yeni version.yaml okunacak
-                    // Backend veya frontend image build edilecek
-                }
-            }
-        }
-
-        stage('Push Image to Nexus') {
-            steps {
-                script {
-                    // Sonraki adım:
-                    // nexus-creds ile login
-                    // todo-nexus:8082 registry'sine push
-                }
-            }
-        }
-        */
     }
 
     post {
+
+        success {
+            echo "PR Pipeline SUCCESS."
+        }
 
         failure {
             echo "PR Pipeline FAILED."
