@@ -5,6 +5,13 @@ pipeline {
         }
     }
 
+    environment {
+        MODULE_CHECK_NAME = 'Module Build Check'
+
+        GITHUB_OWNER = 'denizhansan'
+        GITHUB_REPO  = 'todo-list'
+    }
+
     stages {
 
         stage('Identify Target Module') {
@@ -21,6 +28,15 @@ pipeline {
                         env.MODULE_JOB = 'frontend-module'
                     }
                     else {
+                        publishChecks(
+                            name: env.MODULE_CHECK_NAME,
+                            title: 'Module Build Check',
+                            summary: 'Unsupported PR target branch.',
+                            text: "Target branch: ${env.CHANGE_TARGET}",
+                            status: 'COMPLETED',
+                            conclusion: 'FAILURE'
+                        )
+
                         error(
                             "Unsupported target branch: ${env.CHANGE_TARGET}. " +
                             "PR must target backend-module or frontend-module."
@@ -35,10 +51,26 @@ pipeline {
         stage('Run Module Pipeline') {
             steps {
                 script {
+
+                    publishChecks(
+                        name: env.MODULE_CHECK_NAME,
+                        title: 'Module Build Check',
+                        summary: "${env.MODULE_JOB} pipeline is running.",
+                        text: "Validating PR #${env.CHANGE_ID}.",
+                        status: 'IN_PROGRESS'
+                    )
+
                     echo "Starting ${env.MODULE_JOB} pipeline..."
+                    echo "Passing PR_NUMBER: ${env.CHANGE_ID}"
 
                     def moduleBuild = build(
                         job: env.MODULE_JOB,
+                        parameters: [
+                            string(
+                                name: 'PR_NUMBER',
+                                value: env.CHANGE_ID
+                            )
+                        ],
                         wait: true,
                         propagate: false
                     )
@@ -47,70 +79,163 @@ pipeline {
                     echo "Module build result: ${moduleBuild.result}"
 
                     if (moduleBuild.result != 'SUCCESS') {
+
+                        publishChecks(
+                            name: env.MODULE_CHECK_NAME,
+                            title: 'Module Build Check',
+                            summary: "${env.MODULE_JOB} pipeline failed.",
+                            text: "PR #${env.CHANGE_ID} cannot be merged.",
+                            status: 'COMPLETED',
+                            conclusion: 'FAILURE'
+                        )
+
                         error(
                             "${env.MODULE_JOB} pipeline failed. " +
                             "PR cannot be merged."
                         )
                     }
 
+                    publishChecks(
+                        name: env.MODULE_CHECK_NAME,
+                        title: 'Module Build Check',
+                        summary: "${env.MODULE_JOB} pipeline completed successfully.",
+                        text: "PR #${env.CHANGE_ID} passed module validation.",
+                        status: 'COMPLETED',
+                        conclusion: 'SUCCESS'
+                    )
+
                     echo "${env.MODULE_JOB} pipeline completed successfully."
+                    echo "${env.MODULE_CHECK_NAME}: SUCCESS"
+                    echo "GitHub Ruleset can now allow the PR to be merged."
                 }
             }
         }
 
-        stage('Check & Run Version Updater') {
+        stage('Wait for PR Merge') {
             steps {
                 script {
 
-                    echo "Checking PR status before calling Version Updater..."
+                    echo "Waiting for PR #${env.CHANGE_ID} to be merged..."
 
-                    // Buradaki kontrolü daha sonra gerçek GitHub
-                    // approval kontrolümüz ile değiştirebiliriz.
-                    if (env.CHANGE_ID) {
+                    timeout(time: 30, unit: 'MINUTES') {
 
-                        echo "PR #${env.CHANGE_ID} is eligible."
-                        echo "Starting Version Updater..."
+                        waitUntil {
 
-                        def versionBuild = build(
-                            job: 'version-updater',
-                            wait: true,
-                            propagate: false
-                        )
+                            def prInfo
 
-                        echo "Version Updater build #${versionBuild.number}"
-                        echo "Version Updater result: ${versionBuild.result}"
+                            withCredentials([
+                                usernamePassword(
+                                    credentialsId: 'github-creds',
+                                    usernameVariable: 'GITHUB_USERNAME',
+                                    passwordVariable: 'GITHUB_TOKEN'
+                                )
+                            ]) {
 
-                        if (versionBuild.result != 'SUCCESS') {
-                            error(
-                                "Version Updater failed. " +
-                                "Version update was not completed successfully."
-                            )
+                                prInfo = sh(
+                                    script: """
+                                        curl -sS \
+                                            -u "\$GITHUB_USERNAME:\$GITHUB_TOKEN" \
+                                            -H "Accept: application/vnd.github+json" \
+                                            https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/pulls/${env.CHANGE_ID}
+                                    """,
+                                    returnStdout: true
+                                ).trim()
+                            }
+
+                            def pr = readJSON text: prInfo
+
+                            echo "PR state  : ${pr.state}"
+                            echo "PR merged : ${pr.merged}"
+
+                            if (pr.merged == true) {
+                                echo "PR #${env.CHANGE_ID} has been merged."
+                                return true
+                            }
+
+                            if (pr.state == 'closed' && pr.merged == false) {
+                                error(
+                                    "PR #${env.CHANGE_ID} was closed without being merged. " +
+                                    "Version Updater will not run."
+                                )
+                            }
+
+                            echo "PR is still open. Waiting..."
+
+                            return false
                         }
-
-                        echo "Version Updater completed successfully."
-                    }
-                    else {
-                        echo "No PR detected. Version Updater will not run."
                     }
                 }
             }
         }
+
+        stage('Run Version Updater') {
+            steps {
+                script {
+                    echo "PR was merged successfully."
+                    echo "Starting Version-updater..."
+                    echo "Module: ${env.MODULE_JOB}"
+
+                    def versionBuild = build(
+                        job: 'Version-updater',
+                        parameters: [
+                            string(
+                                name: 'MODE',
+                                value: 'MODULE'
+                            ),
+                            string(
+                                name: 'MODULE',
+                                value: env.MODULE_JOB
+                            )
+                        ],
+                        wait: true,
+                        propagate: false
+                    )
+
+                    echo "Version Updater build #${versionBuild.number}"
+                    echo "Version Updater result: ${versionBuild.result}"
+
+                    if (versionBuild.result != 'SUCCESS') {
+                        error(
+                            "Version Updater failed for ${env.MODULE_JOB}."
+                        )
+                    }
+
+                    echo "Version Updater completed successfully."
+                }
+            }
+        }
+
+        /*
+        stage('Build Docker Image') {
+            steps {
+                script {
+                    // Sonraki adım:
+                    // Yeni version.yaml okunacak
+                    // Backend veya frontend image build edilecek
+                }
+            }
+        }
+
+        stage('Push Image to Nexus') {
+            steps {
+                script {
+                    // Sonraki adım:
+                    // nexus-creds ile login
+                    // todo-nexus:8082 registry'sine push
+                }
+            }
+        }
+        */
     }
 
     post {
 
-        success {
-            echo "PR checks SUCCESS."
-            echo "You can now merge this Pull Request from GitHub."
-        }
-
         failure {
-            echo "PR checks FAILED."
-            echo "Pull Request should not be merged."
+            echo "PR Pipeline FAILED."
         }
 
         aborted {
-            echo "PR checks ABORTED."
+            echo "PR Pipeline ABORTED."
         }
 
         always {
