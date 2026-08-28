@@ -171,7 +171,6 @@ pipeline {
         stage('Run Version Updater') {
             steps {
                 script {
-
                     echo "PR was merged successfully."
                     echo "Starting Version-updater..."
                     echo "Module: ${env.MODULE_JOB}"
@@ -179,7 +178,7 @@ pipeline {
                     def versionBuild = build(
                         job: 'Version-updater',
                         parameters: [
-                            choice(
+                            string(
                                 name: 'MODE',
                                 value: 'MODULE'
                             ),
