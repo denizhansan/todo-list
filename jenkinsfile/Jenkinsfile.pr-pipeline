@@ -11,7 +11,7 @@ pipeline {
         GITHUB_OWNER = 'denizhansan'
         GITHUB_REPO  = 'todo-list'
 
-        NEXUS_REGISTRY = 'host.docker.internal:8082'
+        NEXUS_REGISTRY = 'todo-nexus:8082'
     }
 
     stages {
