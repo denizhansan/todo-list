@@ -20,6 +20,12 @@ pipeline {
             ],
             description: 'MODULE: update version after module merge. RELEASE: set all versions to VERSION.'
         )
+
+        string(
+            name: 'MODULE',
+            defaultValue: '',
+            description: 'Module name used in MODULE mode. backend-module or frontend-module'
+        )
     }
 
     stages {
@@ -43,29 +49,22 @@ pipeline {
 
                     } else {
 
-                        def payload = readJSON text: env.RAW_PAYLOAD
-
-                        def action = payload.action
-                        def merged = payload.pull_request.merged
-                        def targetBranch = payload.pull_request.base.ref
-
-                        echo "PR action: ${action}"
-                        echo "PR merged: ${merged}"
-                        echo "Target branch: ${targetBranch}"
-
-                        if (action != 'closed' || merged != true) {
-                            error "PR was closed but not merged."
+                        if (!params.MODULE?.trim()) {
+                            error 'MODULE parameter is required in MODULE mode.'
                         }
 
                         if (
-                            targetBranch != 'backend-module' &&
-                            targetBranch != 'frontend-module'
+                            params.MODULE != 'backend-module' &&
+                            params.MODULE != 'frontend-module'
                         ) {
-                            error "Unsupported target branch: ${targetBranch}"
+                            error "Unsupported module: ${params.MODULE}"
                         }
 
-                        env.MODULE = targetBranch
+                        env.MODULE = params.MODULE
 
+                        echo '======================================'
+                        echo 'MODULE MODE'
+                        echo '======================================'
                         echo "Selected module: ${env.MODULE}"
                     }
                 }
